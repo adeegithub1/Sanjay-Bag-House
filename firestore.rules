@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      // Custom claim set via Cloud Function — see setAdminClaim in functions/index.js
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---- Products & Categories: public read, admin-only write ----
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Store settings (homepage CMS, shipping, branding): public read, admin write ----
+    match /storeSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Coupons: NOT publicly readable (prevents scraping all codes).
+    // Validated server-side only, via a Cloud Function. ----
+    match /coupons/{couponId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- Customers (extra profile data beyond Firebase Auth) ----
+    match /customers/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      // Customers can update their own profile/addresses, but never touch
+      // fields like totalSpent / orderCount — those are admin/function-only.
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['totalSpent', 'orderCount', 'isAdmin']);
+      allow delete: if isAdmin();
+    }
+
+    // ---- Orders: created ONLY by Cloud Functions (never directly by client) ----
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // No direct client writes at all — orders are created by createOrder()
+      // and updated by admin actions / Razorpay webhook, all server-side.
+      allow write: if false;
+    }
+
+    // ---- Reviews: signed-in users can create their own; only visible if approved
+    // (or to the author / admin); only admin can change status ----
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || isAdmin()
+                   || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- Per-user cart (optional — synced cart across devices) ----
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
