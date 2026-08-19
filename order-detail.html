@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Details | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account/orders.html">Orders</a><span class="sep">/</span><span class="current" id="crumbId">Order</span></nav>
+  <div id="detailWrap"></div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>
+SBHComponents.init('');
+const data = window.SBH_DATA;
+const id = new URLSearchParams(window.location.search).get('id');
+const o = data.ORDERS.find(x => x.id === id) || data.ORDERS[0];
+document.getElementById('crumbId').textContent = o.id;
+
+const steps = ["Order Placed","Confirmed","Processing","Packed","Shipped","Delivered"];
+const currentIdx = Math.max(0, steps.indexOf(o.status === "Order Placed" ? "Order Placed" : o.status));
+const activeIdx = steps.includes(o.status) ? steps.indexOf(o.status) : (o.status === 'Pending' ? 0 : 5);
+
+document.getElementById('detailWrap').innerHTML = `
+<div style="display:grid;grid-template-columns:1fr;gap:24px;padding:20px 0 60px;" class="pdp-grid">
+  <div>
+    <div class="card" style="padding:22px;margin-bottom:20px;">
+      <div class="flex justify-between items-center" style="margin-bottom:16px;">
+        <h1 class="section-heading" style="font-size:19px;">${o.id}</h1>
+        <span class="badge badge-accent">${o.status}</span>
+      </div>
+      <p class="caption-text" style="margin-bottom:20px;">Placed on ${o.date} · Payment: ${o.payment}</p>
+      ${o.items.map(i => `
+        <div class="cart-item">
+          <img src="${i.image}" alt="${i.name}" />
+          <div>
+            <div class="cart-item-name">${i.name}</div>
+            <div class="cart-item-meta">SKU: ${i.sku} · Qty: ${i.qty}</div>
+            <strong>${data.formatINR(i.price * i.qty)}</strong>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <div class="card" style="padding:22px;">
+      <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Order Timeline</h3>
+      <div class="order-timeline">
+        ${steps.map((s,i) => `
+          <div class="timeline-step ${i<=activeIdx ? 'done':''}">
+            <div class="t-title">${s}</div>
+            <div class="t-date">${i<=activeIdx ? o.date : 'Pending'}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="padding:22px;margin-bottom:16px;">
+      <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Shipping Address</h3>
+      <p class="body-text">${o.customer}</p>
+      <p class="text-muted" style="font-size:13px;">${o.address}, ${o.city}, ${o.state} ${o.pin}</p>
+      <p class="text-muted" style="font-size:13px;">${o.phone}</p>
+    </div>
+    <div class="card" style="padding:22px;">
+      <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Payment Summary</h3>
+      <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(o.subtotal)}</span></div>
+      <div class="summary-row"><span>Discount</span><span>− ${data.formatINR(o.discount)}</span></div>
+      <div class="summary-row"><span>Shipping</span><span>${o.shipping === 0 ? 'FREE' : data.formatINR(o.shipping)}</span></div>
+      <div class="summary-row total"><span>Total</span><span>${data.formatINR(o.total)}</span></div>
+    </div>
+  </div>
+</div>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Orders | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account.html">My Account</a><span class="sep">/</span><span class="current">Orders</span></nav>
+  <div class="account-layout">
+    <div id="accountNavWrap"></div>
+    <div>
+      <h1 class="section-heading" style="margin-bottom:18px;">My Orders</h1>
+      <div id="ordersWrap"></div>
+    </div>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/account-nav.js"></script>
+<script>
+SBHComponents.init('');
+document.getElementById('accountNavWrap').innerHTML = renderAccountNav('orders');
+const data = window.SBH_DATA;
+const myOrders = data.ORDERS.slice(0, 6);
+
+function statusBadge(status) {
+  const map = { Delivered: 'success', Shipped: 'accent', Confirmed: 'neutral', Processing: 'warning', Packed: 'neutral', Pending: 'warning', 'Out for Delivery': 'accent', Cancelled: 'danger', Returned: 'danger', Refunded: 'neutral' };
+  return `<span class="badge badge-${map[status] || 'neutral'}">${status}</span>`;
+}
+
+if (myOrders.length) {
+  document.getElementById('ordersWrap').innerHTML = `
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>Order ID</th><th>Date</th><th>Amount</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      ${myOrders.map(o => `
+        <tr>
+          <td><strong>${o.id}</strong></td>
+          <td>${o.date}</td>
+          <td>${data.formatINR(o.total)}</td>
+          <td>${o.payment}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td><a href="/account/order-detail.html?id=${o.id}" class="btn btn-ghost btn-sm">View Order</a></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+} else {
+  document.getElementById('ordersWrap').innerHTML = `
+    <div class="empty-state">
+      <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h18M3 7l1.5 12a2 2 0 0 0 2 1.8h11a2 2 0 0 0 2-1.8L21 7"/></svg></div>
+      <h3>No orders yet</h3>
+      <p>When you place an order, it will show up here.</p>
+      <a href="/shop.html" class="btn btn-primary">Start Shopping</a>
+    </div>`;
+}
+</script>
+</body>
+</html>
