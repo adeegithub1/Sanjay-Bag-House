@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orders | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-body">
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head"><div><h1>Orders</h1><p>Track and manage customer orders.</p></div></div>
+
+      <div class="pill-tabs" id="statusTabs" style="margin-bottom:18px;overflow-x:auto;display:inline-flex;max-width:100%;"></div>
+
+      <div class="admin-toolbar">
+        <div class="admin-search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="oSearch" placeholder="Search by order ID or customer..." />
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="dt-wrap">
+          <table class="data-table">
+            <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="caption-text" id="oCount"></p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script>
+AdminShell.init('orders', 'Orders');
+const data = window.SBH_DATA;
+const STATUSES = ["All","Pending","Confirmed","Processing","Packed","Shipped","Out for Delivery","Delivered","Cancelled","Returned","Refunded"];
+let activeStatus = "All";
+
+document.getElementById('statusTabs').innerHTML = STATUSES.map(s => `<button class="pill-tab ${s==='All'?'active':''}" data-status="${s}">${s}</button>`).join('');
+
+function statusBadge(status) {
+  const map = { Delivered: 'success', Shipped: 'accent', Confirmed: 'neutral', Processing: 'warning', Packed: 'neutral', Pending: 'warning', 'Out for Delivery': 'accent', Cancelled: 'danger', Returned: 'danger', Refunded: 'neutral' };
+  return `<span class="badge badge-${map[status] || 'neutral'}">${status}</span>`;
+}
+
+function render() {
+  const q = document.getElementById('oSearch').value.toLowerCase();
+  let list = data.ORDERS.filter(o => (o.id + o.customer).toLowerCase().includes(q));
+  if (activeStatus !== 'All') list = list.filter(o => o.status === activeStatus);
+  document.getElementById('oCount').textContent = `Showing ${list.length} of ${data.ORDERS.length} orders`;
+  document.getElementById('ordersBody').innerHTML = list.map(o => `
+    <tr>
+      <td><strong>${o.id}</strong></td>
+      <td>${o.customer}</td>
+      <td>${data.formatINR(o.total)}</td>
+      <td>${o.payment}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td>${o.date}</td>
+      <td><a href="/admin/order-detail.html?id=${o.id}" class="btn btn-ghost btn-sm">View</a></td>
+    </tr>`).join('');
+  if (!list.length) {
+    document.getElementById('ordersBody').innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:40px;"><h3 style="font-size:14px;">No orders found</h3><p style="font-size:12.5px;">Try a different search or status filter.</p></div></td></tr>`;
+  }
+}
+
+document.querySelectorAll('#statusTabs .pill-tab').forEach(btn => btn.addEventListener('click', function() {
+  document.querySelectorAll('#statusTabs .pill-tab').forEach(b=>b.classList.remove('active'));
+  this.classList.add('active');
+  activeStatus = this.dataset.status;
+  render();
+}));
+document.getElementById('oSearch').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

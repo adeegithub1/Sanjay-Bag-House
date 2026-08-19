@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-body">
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head">
+        <div><h1>Dashboard</h1><p>Welcome back, here's how your store is doing today.</p></div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h3>Sales Overview</h3>
+          <div class="pill-tabs" id="salesTabs">
+            <button class="pill-tab active" data-range="7">7 Days</button>
+            <button class="pill-tab" data-range="30">30 Days</button>
+            <button class="pill-tab" data-range="90">90 Days</button>
+            <button class="pill-tab" data-range="365">1 Year</button>
+          </div>
+        </div>
+        <div class="admin-panel-body">
+          <svg id="salesChart" viewBox="0 0 700 220" style="width:100%;height:220px;"></svg>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head"><h3>Recent Orders</h3><a href="/admin/orders.html" class="caption-text" style="color:var(--color-accent);font-weight:600;">View All →</a></div>
+        <div class="dt-wrap">
+          <table class="data-table" id="recentOrdersTable">
+            <thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th></th></tr></thead>
+            <tbody id="recentOrdersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pdp-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="admin-panel" style="margin-bottom:0;">
+          <div class="admin-panel-head"><h3>Top Selling Products</h3></div>
+          <div class="dt-wrap"><table class="data-table"><thead><tr><th>Product</th><th>Sold</th><th>Revenue</th></tr></thead><tbody id="topProductsBody"></tbody></table></div>
+        </div>
+        <div class="admin-panel" style="margin-bottom:0;">
+          <div class="admin-panel-head"><h3>Low Stock Products</h3></div>
+          <div class="dt-wrap"><table class="data-table"><thead><tr><th>Product</th><th>Stock</th><th>Status</th></tr></thead><tbody id="lowStockBody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script>
+AdminShell.init('dashboard', 'Dashboard');
+const data = window.SBH_DATA;
+
+const stats = [
+  { icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', value: '₹18,450', label: "Today's Revenue", delta: '+12.4%', up: true },
+  { icon: '<path d="M9 2h6l1 4H8l1-4Z"/><path d="M4 6h16l-1.5 14a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 6Z"/>', value: '27', label: "Today's Orders", delta: '+5.2%', up: true },
+  { icon: '<path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2M3 8l1.5 11a2 2 0 0 0 2 1.8h11a2 2 0 0 0 2-1.8L21 8M3 8h18"/>', value: '126', label: 'Total Products', delta: '+3 new', up: true },
+  { icon: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/>', value: '842', label: 'Total Customers', delta: '+18 this week', up: true },
+  { icon: '<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>', value: '8', label: 'Low Stock', delta: 'Needs attention', up: false },
+  { icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', value: '12', label: 'Pending Orders', delta: 'Action needed', up: false },
+];
+document.getElementById('statsGrid').innerHTML = stats.map(s => `
+  <div class="stat-card">
+    <div class="icon-wrap"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${s.icon}</svg></div>
+    <div class="value">${s.value}</div>
+    <div class="label">${s.label}</div>
+    <div class="delta ${s.up ? 'up' : 'down'}">${s.up ? '↑' : '⚠'} ${s.delta}</div>
+  </div>`).join('');
+
+function statusBadge(status) {
+  const map = { Delivered: 'success', Shipped: 'accent', Confirmed: 'neutral', Processing: 'warning', Packed: 'neutral', Pending: 'warning', 'Out for Delivery': 'accent', Cancelled: 'danger', Returned: 'danger', Refunded: 'neutral' };
+  return `<span class="badge badge-${map[status] || 'neutral'}">${status}</span>`;
+}
+
+document.getElementById('recentOrdersBody').innerHTML = data.ORDERS.slice(0,8).map(o => `
+  <tr>
+    <td><strong>${o.id}</strong></td>
+    <td>${o.customer}</td>
+    <td>${o.items[0].name}${o.items.length>1 ? ` +${o.items.length-1} more` : ''}</td>
+    <td>${data.formatINR(o.total)}</td>
+    <td>${o.payment}</td>
+    <td>${statusBadge(o.status)}</td>
+    <td>${o.date}</td>
+    <td><a href="/admin/order-detail.html?id=${o.id}" class="row-actions"><button aria-label="View order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></a></td>
+  </tr>`).join('');
+
+const topProducts = data.PRODUCTS.slice().sort((a,b)=>b.reviews-a.reviews).slice(0,5);
+document.getElementById('topProductsBody').innerHTML = topProducts.map(p => `
+  <tr><td><div class="dt-product-cell"><img src="${p.images[0]}" alt="${p.name}"/><span class="pname">${p.name}</span></div></td><td>${p.reviews*2}</td><td>${data.formatINR(p.price * p.reviews)}</td></tr>`).join('');
+
+const lowStock = data.PRODUCTS.filter(p => p.stock < 20).sort((a,b)=>a.stock-b.stock).slice(0,5);
+document.getElementById('lowStockBody').innerHTML = lowStock.map(p => `
+  <tr><td><div class="dt-product-cell"><img src="${p.images[0]}" alt="${p.name}"/><span class="pname">${p.name}</span></div></td><td>${p.stock} units</td><td><span class="badge ${p.stock < 15 ? 'badge-danger' : 'badge-warning'}">${p.stock < 15 ? 'Critical' : 'Low Stock'}</span></td></tr>`).join('');
+
+// Simple SVG line chart mock
+function drawChart(days) {
+  const pts = Array.from({length: 10}, () => 40 + Math.random() * 160);
+  const w = 700, h = 220, pad = 20;
+  const stepX = (w - pad*2) / (pts.length - 1);
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const norm = v => h - pad - ((v - min) / (max - min || 1)) * (h - pad*2);
+  const points = pts.map((v,i) => `${pad + i*stepX},${norm(v)}`).join(' ');
+  const area = `${pad},${h-pad} ${points} ${w-pad},${h-pad}`;
+  document.getElementById('salesChart').innerHTML = `
+    <polygon points="${area}" fill="rgba(138,90,59,0.12)" />
+    <polyline points="${points}" fill="none" stroke="#8A5A3B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    ${pts.map((v,i) => `<circle cx="${pad+i*stepX}" cy="${norm(v)}" r="3.5" fill="#8A5A3B" />`).join('')}
+  `;
+}
+drawChart(7);
+document.querySelectorAll('#salesTabs .pill-tab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#salesTabs .pill-tab').forEach(b=>b.classList.remove('active'));
+    this.classList.add('active');
+    drawChart(this.dataset.range);
+  });
+});
+</script>
+</body>
+</html>
