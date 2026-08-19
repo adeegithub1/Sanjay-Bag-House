@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQs | Sanjay Bag House</title>
+<meta name="description" content="Answers to frequently asked questions about shipping, returns, sizing and orders at Sanjay Bag House." />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<div class="page-hero"><div class="container"><span class="eyebrow">Support</span><h1 class="section-heading" style="margin-top:10px;">Frequently Asked Questions</h1></div></div>
+<main class="container" style="padding:50px 0;max-width:760px;">
+  <div id="faqList"></div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>
+SBHComponents.init('');
+const faqs = [
+  { q: "How long does delivery take?", a: "Most orders are delivered within 4-7 business days across India, depending on your location. Metro cities typically receive orders faster." },
+  { q: "Is Cash on Delivery available?", a: "Yes, COD is available on most orders below ₹10,000. A small COD handling fee of ₹30 applies." },
+  { q: "What is your return policy?", a: "We offer a 7-day easy return window from the date of delivery for unused products in original packaging. Visit our Return Policy page for full details." },
+  { q: "How do I track my order?", a: "Once your order ships, you'll receive a tracking link via email and SMS. You can also track it from the Orders section in your account." },
+  { q: "Do you offer warranty on bags?", a: "Yes, most of our bags come with a manufacturer warranty ranging from 3 months to 5 years depending on the product category." },
+  { q: "Can I cancel my order after placing it?", a: "Orders can be cancelled before they are shipped. Once shipped, you may refuse delivery or initiate a return after receiving the product." },
+  { q: "Do you ship internationally?", a: "Currently we only ship within India. International shipping will be introduced soon." },
+];
+document.getElementById('faqList').innerHTML = faqs.map((f,i) => `
+  <div class="accordion-item">
+    <button class="accordion-trigger" onclick="toggleFaq(${i})">
+      ${f.q}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="accordion-content" id="faqContent${i}"><div class="inner">${f.a}</div></div>
+  </div>`).join('');
+
+function toggleFaq(i) {
+  const trigger = document.querySelectorAll('.accordion-trigger')[i];
+  const content = document.getElementById('faqContent'+i);
+  const isOpen = trigger.classList.contains('open');
+  trigger.classList.toggle('open', !isOpen);
+  content.style.maxHeight = isOpen ? '0' : content.scrollHeight + 'px';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payment Failed | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <div class="empty-state">
+    <div class="icon-wrap" style="background:var(--color-danger-bg);color:var(--color-danger);">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </div>
+    <h3>Payment Failed</h3>
+    <p>We couldn't process your payment this time. Don't worry — no amount has been deducted. Please try again or choose a different payment method.</p>
+    <div class="flex gap-8" style="justify-content:center;flex-wrap:wrap;">
+      <a href="/checkout.html" class="btn btn-primary">Retry Payment</a>
+      <a href="/cart.html" class="btn btn-secondary">Back to Cart</a>
+    </div>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>SBHComponents.init('');</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title id="pageTitle">Category | Sanjay Bag House</title>
+<meta name="description" content="Shop by category at Sanjay Bag House." />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+
+<div class="page-hero" id="catHero">
+  <div class="container">
+    <h1 class="section-heading" id="catName">Category</h1>
+    <p id="catDesc"></p>
+  </div>
+</div>
+
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/shop.html">Shop</a><span class="sep">/</span><span class="current" id="crumbCat">Category</span></nav>
+  <div class="shop-toolbar">
+    <p class="text-muted" id="catCount"></p>
+    <select id="catSort" class="form-select" style="width:auto;">
+      <option value="featured">Featured</option>
+      <option value="price-low">Price: Low to High</option>
+      <option value="price-high">Price: High to Low</option>
+      <option value="rating">Rating</option>
+    </select>
+  </div>
+  <div class="product-grid" id="catGrid"></div>
+  <div class="empty-state hidden" id="catEmpty">
+    <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/></svg></div>
+    <h3>No products in this category yet</h3>
+    <p>Check back soon or browse our full collection.</p>
+    <a href="/shop.html" class="btn btn-primary">Shop All Bags</a>
+  </div>
+</main>
+
+<div id="sbh-footer"></div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/product-card.js"></script>
+<script>
+SBHComponents.init('shop');
+const data = window.SBH_DATA;
+const slug = new URLSearchParams(window.location.search).get('slug') || 'backpacks';
+const cat = data.getCategory(slug);
+
+if (cat) {
+  document.title = cat.name + " | Sanjay Bag House";
+  document.getElementById('pageTitle').textContent = cat.name + " | Sanjay Bag House";
+  document.getElementById('catName').textContent = cat.name;
+  document.getElementById('catDesc').textContent = cat.desc;
+  document.getElementById('crumbCat').textContent = cat.name;
+  document.getElementById('catHero').style.backgroundImage = `linear-gradient(rgba(23,23,23,.45),rgba(23,23,23,.45)), url(${cat.image})`;
+  document.getElementById('catHero').style.backgroundSize = 'cover';
+  document.getElementById('catHero').style.backgroundPosition = 'center';
+  document.getElementById('catName').style.color = '#fff';
+  document.getElementById('catDesc').style.color = '#F0EEE8';
+}
+
+let sortMode = 'featured';
+function renderCat() {
+  let list = data.getProductsByCategory(slug);
+  document.getElementById('catCount').textContent = `${list.length} products`;
+  switch(sortMode) {
+    case 'price-low': list = list.slice().sort((a,b)=>a.price-b.price); break;
+    case 'price-high': list = list.slice().sort((a,b)=>b.price-a.price); break;
+    case 'rating': list = list.slice().sort((a,b)=>b.rating-a.rating); break;
+  }
+  document.getElementById('catGrid').innerHTML = list.map(p => renderProductCard(p)).join('');
+  document.getElementById('catEmpty').classList.toggle('hidden', list.length > 0);
+}
+document.getElementById('catSort').addEventListener('change', function(){ sortMode = this.value; renderCat(); });
+renderCat();
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Placed Successfully | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <div class="empty-state">
+    <div class="icon-wrap" style="background:var(--color-success-bg);color:var(--color-success);">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h3>Order Placed Successfully!</h3>
+    <p>Thank you for shopping with Sanjay Bag House. Your order <strong id="orderIdText">#SBH10298</strong> has been confirmed and will be shipped soon. A confirmation email has been sent to you.</p>
+    <div class="flex gap-8" style="justify-content:center;flex-wrap:wrap;">
+      <a href="/account/orders.html" class="btn btn-primary">View Order</a>
+      <a href="/shop.html" class="btn btn-secondary">Continue Shopping</a>
+    </div>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>
+SBHComponents.init('');
+document.getElementById('orderIdText').textContent = '#SBH' + (10290 + Math.floor(Math.random()*90));
+</script>
+</body>
+</html>

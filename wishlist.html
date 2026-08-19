@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Wishlist | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><span class="current">Wishlist</span></nav>
+  <h1 class="section-heading" style="margin-bottom:18px;">My Wishlist</h1>
+  <div class="product-grid" id="wishGrid"></div>
+  <div class="empty-state hidden" id="wishEmpty">
+    <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6Z"/></svg></div>
+    <h3>Your wishlist is empty</h3>
+    <p>Save items you love so you can find them easily later.</p>
+    <a href="/shop.html" class="btn btn-primary">Explore Bags</a>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/product-card.js"></script>
+<script>
+SBHComponents.init('');
+function render() {
+  const items = window.SBHStore.wishlistDetailed();
+  document.getElementById('wishGrid').innerHTML = items.map(p => renderProductCard(p)).join('');
+  document.getElementById('wishEmpty').classList.toggle('hidden', items.length > 0);
+}
+document.addEventListener('sbh:wishlist-updated', render);
+render();
+</script>
+</body>
+</html>

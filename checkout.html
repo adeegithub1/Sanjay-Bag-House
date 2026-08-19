@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+
+<main class="container" style="padding-bottom:60px;">
+  <h1 class="section-heading" style="margin:20px 0 6px;">Checkout</h1>
+  <div class="checkout-steps">
+    <div class="checkout-step"><span class="num">✓</span> Cart</div>
+    <span class="sep">—</span>
+    <div class="checkout-step active"><span class="num">2</span> Details</div>
+    <span class="sep">—</span>
+    <div class="checkout-step"><span class="num">3</span> Payment</div>
+  </div>
+
+  <div id="checkoutWrap"></div>
+</main>
+
+<div id="sbh-footer"></div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>
+SBHComponents.init('shop');
+const data = window.SBH_DATA;
+const items = window.SBHStore.cartDetailed();
+let payMethod = 'online';
+
+if (!items.length) {
+  document.getElementById('checkoutWrap').innerHTML = `
+    <div class="empty-state">
+      <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg></div>
+      <h3>Your cart is empty</h3>
+      <p>Add a few items before checking out.</p>
+      <a href="/shop.html" class="btn btn-primary">Shop Now</a>
+    </div>`;
+} else {
+  const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
+  const shipping = subtotal > 999 ? 0 : 79;
+  const total = subtotal + shipping;
+
+  document.getElementById('checkoutWrap').innerHTML = `
+  <div class="cart-layout">
+    <form id="checkoutForm">
+      <div class="card" style="padding:22px;margin-bottom:20px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Customer Information</h3>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input required class="form-input" placeholder="e.g. Priya Sharma" /></div>
+          <div class="form-group"><label class="form-label">Mobile Number <span class="req">*</span></label><input required type="tel" class="form-input" placeholder="10-digit mobile number" /></div>
+        </div>
+        <div class="form-group"><label class="form-label">Email Address <span class="req">*</span></label><input required type="email" class="form-input" placeholder="you@example.com" /></div>
+      </div>
+
+      <div class="card" style="padding:22px;margin-bottom:20px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Shipping Address</h3>
+        <div class="form-group"><label class="form-label">Address <span class="req">*</span></label><input required class="form-input" placeholder="House no., building, street" /></div>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label class="form-label">Apartment / House</label><input class="form-input" placeholder="Optional" /></div>
+          <div class="form-group"><label class="form-label">Landmark</label><input class="form-input" placeholder="Optional" /></div>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group"><label class="form-label">City <span class="req">*</span></label><input required class="form-input" placeholder="City" /></div>
+          <div class="form-group"><label class="form-label">State <span class="req">*</span></label>
+            <select required class="form-select"><option value="">Select State</option><option>Maharashtra</option><option>Delhi</option><option>Karnataka</option><option>Gujarat</option><option>Rajasthan</option><option>Uttar Pradesh</option><option>Tamil Nadu</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">PIN Code <span class="req">*</span></label><input required class="form-input" placeholder="6-digit PIN" /></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Payment Method</h3>
+        <label class="radio-card selected" id="onlineCard" style="margin-bottom:10px;">
+          <input type="radio" name="pay" checked onchange="setPay('online')" />
+          <div>
+            <strong style="font-size:13.5px;">Online Payment</strong>
+            <p class="caption-text">UPI, Cards, Netbanking &amp; Wallets via Razorpay</p>
+          </div>
+        </label>
+        <label class="radio-card" id="codCard">
+          <input type="radio" name="pay" onchange="setPay('cod')" />
+          <div>
+            <strong style="font-size:13.5px;">Cash on Delivery</strong>
+            <p class="caption-text">Pay when your order arrives · ₹30 COD fee applies</p>
+          </div>
+        </label>
+      </div>
+    </form>
+
+    <div>
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
+        ${items.map(i => `<div class="summary-row"><span>${i.name} × ${i.qty}</span><span>${data.formatINR(i.lineTotal)}</span></div>`).join('')}
+        <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
+        <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn">Place Order</button>
+        <p class="caption-text" style="text-align:center;margin-top:10px;">🔒 Your information is safe and secure</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.setPay = function(mode) {
+  payMethod = mode;
+  document.getElementById('onlineCard').classList.toggle('selected', mode==='online');
+  document.getElementById('codCard').classList.toggle('selected', mode==='cod');
+};
+
+window.placeOrder = function(e) {
+  e.preventDefault();
+  const form = document.getElementById('checkoutForm');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const btn = document.getElementById('placeOrderBtn');
+  btn.disabled = true; btn.textContent = 'Processing...';
+  setTimeout(() => {
+    window.SBHStore.clearCart();
+    window.location.href = payMethod === 'cod' || Math.random() > 0.15 ? '/order-success.html' : '/order-failed.html';
+  }, 1200);
+};
+</script>
+</body>
+</html>

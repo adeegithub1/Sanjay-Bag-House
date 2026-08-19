@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact Us | Sanjay Bag House</title>
+<meta name="description" content="Get in touch with Sanjay Bag House for order support, product questions or partnership inquiries." />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<div class="page-hero"><div class="container"><span class="eyebrow">We're Here to Help</span><h1 class="section-heading" style="margin-top:10px;">Contact Us</h1><p>Reach out for order support, product questions or anything else.</p></div></div>
+<main class="container" style="padding:50px 0;">
+  <div class="cart-layout" style="grid-template-columns:1fr;gap:36px;">
+    <div class="pdp-grid" style="grid-template-columns:1fr 1fr;gap:36px;">
+      <div class="card" style="padding:26px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;">Send Us a Message</h3>
+        <form onsubmit="event.preventDefault(); showToast('Message sent successfully','success'); this.reset();">
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Full Name</label><input required class="form-input" placeholder="Your name" /></div>
+            <div class="form-group"><label class="form-label">Email</label><input required type="email" class="form-input" placeholder="you@example.com" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">Subject</label><input class="form-input" placeholder="How can we help?" /></div>
+          <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" placeholder="Write your message here..."></textarea></div>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </form>
+      </div>
+      <div>
+        <div class="card" style="padding:26px;margin-bottom:16px;">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;">Get in Touch</h3>
+          <ul class="footer-contact" style="color:var(--color-text);">
+            <li>📞 +91 98765 43210</li>
+            <li>💬 WhatsApp: +91 98765 43210</li>
+            <li>✉️ support@sanjaybaghouse.in</li>
+            <li>📍 14, MG Road, Pune, Maharashtra 411001</li>
+          </ul>
+        </div>
+        <div class="card" style="padding:26px;">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:10px;">Business Hours</h3>
+          <p class="body-text" style="margin-bottom:4px;">Monday – Saturday: 10:00 AM – 8:00 PM</p>
+          <p class="body-text">Sunday: 11:00 AM – 6:00 PM</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>SBHComponents.init('');</script>
+</body>
+</html>
