@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Account | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="auth-wrap">
+  <div class="card auth-card">
+    <h1 class="section-heading" style="font-size:22px;margin-bottom:6px;">Create Account</h1>
+    <p class="text-muted" style="margin-bottom:22px;">Join Sanjay Bag House for faster checkout and order tracking.</p>
+    <form id="registerForm">
+      <div class="form-group"><label class="form-label">Full Name</label><input required id="regName" class="form-input" placeholder="Your full name" /></div>
+      <div class="form-group"><label class="form-label">Email Address</label><input required id="regEmail" type="email" class="form-input" placeholder="you@example.com" /></div>
+      <div class="form-group"><label class="form-label">Mobile Number</label><input required id="regPhone" type="tel" pattern="[0-9]{10}" class="form-input" placeholder="10-digit mobile number" /></div>
+      <div class="form-group"><label class="form-label">Password</label><input required id="regPassword" type="password" minlength="6" class="form-input" placeholder="Create a password (min. 6 characters)" /></div>
+      <label class="checkbox-row" style="margin-bottom:18px;"><input required id="regTerms" type="checkbox" /> I agree to the <a href="/terms.html" style="color:var(--color-accent);">Terms &amp; Conditions</a></label>
+      <button type="submit" class="btn btn-primary btn-block" id="regBtn">Create Account</button>
+    </form>
+    <p class="text-muted" style="text-align:center;margin-top:20px;font-size:13.5px;">Already have an account? <a href="/login.html" style="color:var(--color-accent);font-weight:600;">Login</a></p>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script>SBHComponents.init('');</script>
+<script type="module">
+  import SBHAuth from "/js/auth.js";
+
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('regBtn');
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const phone = document.getElementById('regPhone').value.trim();
+    const password = document.getElementById('regPassword').value;
+    btn.disabled = true; btn.textContent = 'Creating account...';
+    try {
+      await SBHAuth.register({ name, email, phone, password });
+      showToast('Account created successfully', 'success');
+      setTimeout(() => window.location.href = '/account.html', 500);
+    } catch (err) {
+      showToast(friendlyAuthError(err), 'error');
+      btn.disabled = false; btn.textContent = 'Create Account';
+    }
+  });
+</script>
+</body>
+</html>

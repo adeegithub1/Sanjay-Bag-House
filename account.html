@@ -16,12 +16,12 @@
     <div>
       <h1 class="section-heading" style="margin-bottom:18px;">My Profile</h1>
       <div class="card" style="padding:24px;margin-bottom:20px;">
-        <form onsubmit="event.preventDefault(); showToast('Profile updated successfully','success');">
+        <form id="profileForm">
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Priya Sharma" /></div>
-            <div class="form-group"><label class="form-label">Mobile Number</label><input class="form-input" value="98765 43210" /></div>
+            <div class="form-group"><label class="form-label">Full Name</label><input id="profName" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Mobile Number</label><input id="profPhone" class="form-input" /></div>
           </div>
-          <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" value="priya.sharma@gmail.com" /></div>
+          <div class="form-group"><label class="form-label">Email Address</label><input id="profEmail" class="form-input" disabled title="Email can't be changed here" /></div>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>
       </div>
@@ -54,6 +54,35 @@
 <script>
 SBHComponents.init('');
 document.getElementById('accountNavWrap').innerHTML = renderAccountNav('profile');
+wireAccountNavLogout();
+</script>
+<script type="module">
+  import SBHAuth from "/js/auth.js";
+
+  const user = await SBHAuth.getCurrentUser();
+  if (!user) {
+    window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+  } else {
+    const profile = await SBHAuth.getCustomerProfile(user.uid);
+    document.getElementById('profName').value = profile?.name || user.displayName || '';
+    document.getElementById('profPhone').value = profile?.phone || '';
+    document.getElementById('profEmail').value = user.email || '';
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+      const { db } = await import("/js/firebase-init.js");
+      try {
+        await updateDoc(doc(db, "customers", user.uid), {
+          name: document.getElementById('profName').value.trim(),
+          phone: document.getElementById('profPhone').value.trim(),
+        });
+        showToast('Profile updated successfully', 'success');
+      } catch (err) {
+        showToast('Could not update profile. Please try again.', 'error');
+      }
+    });
+  }
 </script>
 </body>
 </html>
