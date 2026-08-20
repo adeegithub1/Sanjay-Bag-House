@@ -9,7 +9,20 @@
     return `
     <nav class="account-nav card" style="padding:10px;">
       ${items.map(i => `<a class="${active===i.key?'active':''}" href="${i.href}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${i.icon}</svg> ${i.label}</a>`).join('')}
-      <a href="/login.html" onclick="showToast('Logged out')" style="color:var(--color-danger);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> Logout</a>
+      <a href="#" id="sbhLogoutLink" style="color:var(--color-danger);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> Logout</a>
     </nav>`;
+  };
+
+  // Wires up #sbhLogoutLink wherever renderAccountNav is used. Safe to call
+  // multiple times; call this right after inserting the nav HTML into the page.
+  window.wireAccountNavLogout = function () {
+    const link = document.getElementById('sbhLogoutLink');
+    if (!link) return;
+    link.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const { default: SBHAuth } = await import('/js/auth.js');
+      await SBHAuth.logout();
+      window.location.href = '/login.html';
+    });
   };
 })();
