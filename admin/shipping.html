@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shipping Settings | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
+</head>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head"><div><h1>Shipping Settings</h1><p>Configure delivery charges, COD and courier preferences.</p></div></div>
+
+      <div class="form-section">
+        <h3>Shipping Charges</h3>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label class="form-label">Standard Shipping Charge (₹)</label><input type="number" class="form-input" value="79" /></div>
+          <div class="form-group"><label class="form-label">Free Shipping Threshold (₹)</label><input type="number" class="form-input" value="999" /></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Cash on Delivery (COD)</h3>
+        <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);margin-bottom:14px;">
+          <span class="body-text">Enable Cash on Delivery</span>
+          <label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group"><label class="form-label">COD Fee (₹)</label><input type="number" class="form-input" value="30" /></div>
+          <div class="form-group"><label class="form-label">Minimum Order for COD (₹)</label><input type="number" class="form-input" value="200" /></div>
+          <div class="form-group"><label class="form-label">Maximum COD Order (₹)</label><input type="number" class="form-input" value="10000" /></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Courier Settings</h3>
+        <p class="desc">Used to generate tracking links for customer order updates.</p>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label class="form-label">Courier Name</label><input class="form-input" placeholder="e.g. Delhivery, Blue Dart, DTDC" /></div>
+          <div class="form-group"><label class="form-label">Tracking URL Format</label><input class="form-input" placeholder="https://courier.com/track/{tracking_id}" /></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="showToast('Shipping settings saved successfully','success')">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script>AdminShell.init('shipping', 'Shipping Settings');</script>
+</body>
+</html>

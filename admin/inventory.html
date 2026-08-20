@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inventory | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
+</head>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head"><div><h1>Inventory</h1><p>Track and update stock across your catalogue.</p></div></div>
+
+      <div class="admin-toolbar">
+        <div class="admin-search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="iSearch" placeholder="Search by product name or SKU..." />
+        </div>
+        <select class="admin-select" id="iStatusFilter"><option value="">All Status</option><option value="In Stock">In Stock</option><option value="Low Stock">Low Stock</option><option value="Out of Stock">Out of Stock</option></select>
+      </div>
+
+      <div class="admin-panel">
+        <div class="dt-wrap">
+          <table class="data-table">
+            <thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Low Stock Threshold</th><th>Status</th><th>Last Updated</th><th>Action</th></tr></thead>
+            <tbody id="invBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="stockModal">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Adjust Stock</h3><button class="icon-btn" onclick="closeStockModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <p class="body-text" style="margin-bottom:16px;" id="stockModalProduct"></p>
+      <div class="form-group"><label class="form-label">Adjustment Type</label>
+        <select class="form-select" id="adjustType"><option value="add">Add Stock</option><option value="remove">Remove Stock</option><option value="set">Set Exact Quantity</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Quantity</label><input type="number" class="form-input" id="adjustQty" placeholder="Enter quantity" /></div>
+      <div class="form-group"><label class="form-label">Reason (optional)</label><input class="form-input" id="adjustReason" placeholder="e.g. New stock arrived" /></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeStockModal()">Cancel</button><button class="btn btn-primary" onclick="saveStockAdjustment()">Update Stock</button></div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script>
+AdminShell.init('inventory', 'Inventory');
+const data = window.SBH_DATA;
+let invProducts = data.PRODUCTS.map(p => ({...p, lowThreshold: 15, updated: '2026-08-1' + (Math.floor(Math.random()*8)+1)}));
+let modalProductId = null;
+
+function statusOf(p) {
+  if (p.stock <= 0) return { label: 'Out of Stock', cls: 'danger' };
+  if (p.stock < p.lowThreshold) return { label: 'Low Stock', cls: 'warning' };
+  return { label: 'In Stock', cls: 'success' };
+}
+
+function render() {
+  const q = document.getElementById('iSearch').value.toLowerCase();
+  const statusFilter = document.getElementById('iStatusFilter').value;
+  let list = invProducts.filter(p => (p.name + p.sku).toLowerCase().includes(q));
+  if (statusFilter) list = list.filter(p => statusOf(p).label === statusFilter);
+
+  document.getElementById('invBody').innerHTML = list.map(p => {
+    const s = statusOf(p);
+    return `
+    <tr>
+      <td><div class="dt-product-cell"><img src="${p.images[0]}" alt="${p.name}"/><span class="pname">${p.name}</span></div></td>
+      <td>${p.sku}</td>
+      <td><strong>${p.stock}</strong> units</td>
+      <td>${p.lowThreshold} units</td>
+      <td><span class="badge badge-${s.cls}">${s.label}</span></td>
+      <td>${p.updated}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openStockModal('${p.id}')">Adjust Stock</button>
+          <a href="/admin/product-edit.html?id=${p.id}" class="btn btn-ghost btn-sm">Edit</a>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+window.openStockModal = function(id) {
+  modalProductId = id;
+  const p = invProducts.find(x=>x.id===id);
+  document.getElementById('stockModalProduct').innerHTML = `<strong>${p.name}</strong> — Current stock: ${p.stock} units`;
+  document.getElementById('adjustQty').value = '';
+  document.getElementById('adjustReason').value = '';
+  document.getElementById('stockModal').classList.add('open');
+};
+window.closeStockModal = function() { document.getElementById('stockModal').classList.remove('open'); };
+window.saveStockAdjustment = function() {
+  const p = invProducts.find(x=>x.id===modalProductId);
+  const qty = Number(document.getElementById('adjustQty').value) || 0;
+  const type = document.getElementById('adjustType').value;
+  if (type === 'add') p.stock += qty;
+  else if (type === 'remove') p.stock = Math.max(0, p.stock - qty);
+  else p.stock = qty;
+  p.updated = 'Just now';
+  closeStockModal();
+  showToast('Stock updated successfully', 'success');
+  render();
+};
+
+document.getElementById('iSearch').addEventListener('input', render);
+document.getElementById('iStatusFilter').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
