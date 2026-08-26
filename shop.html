@@ -76,9 +76,11 @@
 <script src="/js/store.js"></script>
 <script src="/js/components.js"></script>
 <script src="/js/product-card.js"></script>
-<script>
+<script type="module" src="/js/firebase-data.js"></script>
+<script type="module">
+(async () => {
 SBHComponents.init('shop');
-const data = window.SBH_DATA;
+const data = await window.SBH_FIRESTORE.load();
 let state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1 };
 const PAGE_SIZE = 8;
 
@@ -174,6 +176,7 @@ document.getElementById('sortSelect').addEventListener('change', function(){ sta
 const params = new URLSearchParams(window.location.search);
 if (params.get('sort')) { state.sort = params.get('sort'); }
 render();
+})();
 </script>
 </body>
 </html>
