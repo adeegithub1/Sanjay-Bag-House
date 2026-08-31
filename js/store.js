@@ -1,8 +1,8 @@
 /* ============================================================
    SANJAY BAG HOUSE — CLIENT STORE
    Cart + Wishlist state (localStorage) + Toast notifications.
-   In production this logic is replaced by real API/Supabase calls,
-   but the calling components stay the same.
+   cartDetailed()/wishlistDetailed() are now ASYNC — they hydrate
+   against real Firestore product data via window.SBH_FIRESTORE.
    ============================================================ */
 
 (function () {
@@ -50,15 +50,17 @@
     isWishlisted(productId) { return read(WISHLIST_KEY).includes(productId); },
     wishlistCount() { return read(WISHLIST_KEY).length; },
 
-    cartDetailed() {
-      const data = window.SBH_DATA;
+    /** ASYNC now — await this. Hydrates cart product IDs against real Firestore data. */
+    async cartDetailed() {
+      const data = await window.SBH_FIRESTORE.load();
       return this.getCart().map(i => {
         const p = data.PRODUCTS.find(pp => pp.id === i.productId);
         return p ? { ...p, qty: i.qty, lineTotal: p.price * i.qty } : null;
       }).filter(Boolean);
     },
-    wishlistDetailed() {
-      const data = window.SBH_DATA;
+    /** ASYNC now — await this. */
+    async wishlistDetailed() {
+      const data = await window.SBH_FIRESTORE.load();
       return this.getWishlist().map(id => data.PRODUCTS.find(p => p.id === id)).filter(Boolean);
     },
   };
