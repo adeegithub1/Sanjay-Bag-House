@@ -22,13 +22,14 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/components.js"></script>
+<script type="module" src="/js/firebase-data.js"></script>
 <script>
 SBHComponents.init('shop');
 const data = window.SBH_DATA;
 let appliedCoupon = null;
 
-function render() {
-  const items = window.SBHStore.cartDetailed();
+async function render() {
+  const items = await window.SBHStore.cartDetailed();
   const wrap = document.getElementById('cartWrap');
   if (!items.length) {
     wrap.innerHTML = `
@@ -96,12 +97,13 @@ function render() {
 
 window.updateQty = function(id, qty) { window.SBHStore.updateQty(id, qty); render(); };
 window.removeItem = function(id) { window.SBHStore.removeFromCart(id); showToast('Item removed from cart'); render(); };
-window.applyCoupon = function() {
+window.applyCoupon = async function() {
   const code = document.getElementById('couponInput').value.trim().toUpperCase();
   const coupon = data.COUPONS.find(c => c.code === code && c.active);
   const msg = document.getElementById('couponMsg');
   if (!coupon) { msg.innerHTML = `<p class="form-error">Invalid or expired coupon code.</p>`; appliedCoupon = null; render(); return; }
-  const subtotal = window.SBHStore.cartDetailed().reduce((s,i)=>s+i.lineTotal,0);
+  const items = await window.SBHStore.cartDetailed();
+  const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
   if (subtotal < coupon.minOrder) { msg.innerHTML = `<p class="form-error">Minimum order of ${data.formatINR(coupon.minOrder)} required for this coupon.</p>`; appliedCoupon = null; render(); return; }
   const amount = coupon.type === 'Percentage' ? Math.min(Math.round(subtotal * coupon.value/100), coupon.maxDiscount) : coupon.value;
   appliedCoupon = { code: coupon.code, amount };
