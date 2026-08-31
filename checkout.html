@@ -28,11 +28,22 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/components.js"></script>
-<script>
+<script type="module" src="/js/firebase-data.js"></script>
+<script type="module">
+import SBHAuth from "/js/auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
+import { app } from "/js/firebase-init.js";
+
 SBHComponents.init('shop');
+
+const user = await SBHAuth.getCurrentUser();
+if (!user) {
+  window.location.href = "/login.html?next=" + encodeURIComponent("/checkout.html");
+} else {
+
+const items = await window.SBHStore.cartDetailed();
+const profile = await SBHAuth.getCustomerProfile(user.uid);
 const data = window.SBH_DATA;
-const items = window.SBHStore.cartDetailed();
-let payMethod = 'online';
 
 if (!items.length) {
   document.getElementById('checkoutWrap').innerHTML = `
@@ -53,42 +64,42 @@ if (!items.length) {
       <div class="card" style="padding:22px;margin-bottom:20px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Customer Information</h3>
         <div class="form-row form-row-2">
-          <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input required class="form-input" placeholder="e.g. Priya Sharma" /></div>
-          <div class="form-group"><label class="form-label">Mobile Number <span class="req">*</span></label><input required type="tel" class="form-input" placeholder="10-digit mobile number" /></div>
+          <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input required id="ck_name" class="form-input" placeholder="e.g. Priya Sharma" value="${profile?.name || ''}" /></div>
+          <div class="form-group"><label class="form-label">Mobile Number <span class="req">*</span></label><input required id="ck_phone" type="tel" pattern="[0-9]{10}" class="form-input" placeholder="10-digit mobile number" value="${profile?.phone || ''}" /></div>
         </div>
-        <div class="form-group"><label class="form-label">Email Address <span class="req">*</span></label><input required type="email" class="form-input" placeholder="you@example.com" /></div>
+        <div class="form-group"><label class="form-label">Email Address</label><input id="ck_email" type="email" class="form-input" value="${user.email || ''}" disabled /></div>
       </div>
 
       <div class="card" style="padding:22px;margin-bottom:20px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Shipping Address</h3>
-        <div class="form-group"><label class="form-label">Address <span class="req">*</span></label><input required class="form-input" placeholder="House no., building, street" /></div>
+        <div class="form-group"><label class="form-label">Address <span class="req">*</span></label><input required id="ck_line1" class="form-input" placeholder="House no., building, street" /></div>
         <div class="form-row form-row-2">
-          <div class="form-group"><label class="form-label">Apartment / House</label><input class="form-input" placeholder="Optional" /></div>
-          <div class="form-group"><label class="form-label">Landmark</label><input class="form-input" placeholder="Optional" /></div>
+          <div class="form-group"><label class="form-label">Apartment / House</label><input id="ck_line2" class="form-input" placeholder="Optional" /></div>
+          <div class="form-group"><label class="form-label">Landmark</label><input id="ck_landmark" class="form-input" placeholder="Optional" /></div>
         </div>
         <div class="form-row form-row-3">
-          <div class="form-group"><label class="form-label">City <span class="req">*</span></label><input required class="form-input" placeholder="City" /></div>
+          <div class="form-group"><label class="form-label">City <span class="req">*</span></label><input required id="ck_city" class="form-input" placeholder="City" /></div>
           <div class="form-group"><label class="form-label">State <span class="req">*</span></label>
-            <select required class="form-select"><option value="">Select State</option><option>Maharashtra</option><option>Delhi</option><option>Karnataka</option><option>Gujarat</option><option>Rajasthan</option><option>Uttar Pradesh</option><option>Tamil Nadu</option></select>
+            <select required id="ck_state" class="form-select"><option value="">Select State</option><option>Maharashtra</option><option>Delhi</option><option>Karnataka</option><option>Gujarat</option><option>Rajasthan</option><option>Uttar Pradesh</option><option>Tamil Nadu</option></select>
           </div>
-          <div class="form-group"><label class="form-label">PIN Code <span class="req">*</span></label><input required class="form-input" placeholder="6-digit PIN" /></div>
+          <div class="form-group"><label class="form-label">PIN Code <span class="req">*</span></label><input required id="ck_pincode" pattern="[0-9]{6}" class="form-input" placeholder="6-digit PIN" /></div>
         </div>
       </div>
 
       <div class="card" style="padding:22px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Payment Method</h3>
-        <label class="radio-card selected" id="onlineCard" style="margin-bottom:10px;">
-          <input type="radio" name="pay" checked onchange="setPay('online')" />
+        <label class="radio-card" style="margin-bottom:10px;opacity:.55;cursor:not-allowed;">
+          <input type="radio" name="pay" disabled />
           <div>
             <strong style="font-size:13.5px;">Online Payment</strong>
-            <p class="caption-text">UPI, Cards, Netbanking &amp; Wallets via Razorpay</p>
+            <p class="caption-text">UPI, Cards, Netbanking &amp; Wallets — coming soon</p>
           </div>
         </label>
-        <label class="radio-card" id="codCard">
-          <input type="radio" name="pay" onchange="setPay('cod')" />
+        <label class="radio-card selected" id="codCard">
+          <input type="radio" name="pay" checked disabled />
           <div>
             <strong style="font-size:13.5px;">Cash on Delivery</strong>
-            <p class="caption-text">Pay when your order arrives · ₹30 COD fee applies</p>
+            <p class="caption-text">Pay when your order arrives</p>
           </div>
         </label>
       </div>
@@ -101,30 +112,46 @@ if (!items.length) {
         <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
         <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
-        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn">Place Order</button>
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn">Place Order (COD)</button>
         <p class="caption-text" style="text-align:center;margin-top:10px;">🔒 Your information is safe and secure</p>
       </div>
     </div>
   </div>`;
 }
 
-window.setPay = function(mode) {
-  payMethod = mode;
-  document.getElementById('onlineCard').classList.toggle('selected', mode==='online');
-  document.getElementById('codCard').classList.toggle('selected', mode==='cod');
-};
-
-window.placeOrder = function(e) {
+window.placeOrder = async function(e) {
   e.preventDefault();
   const form = document.getElementById('checkoutForm');
   if (!form.checkValidity()) { form.reportValidity(); return; }
   const btn = document.getElementById('placeOrderBtn');
-  btn.disabled = true; btn.textContent = 'Processing...';
-  setTimeout(() => {
+  btn.disabled = true; btn.textContent = 'Placing order...';
+
+  const address = {
+    name: document.getElementById('ck_name').value.trim(),
+    phone: document.getElementById('ck_phone').value.trim(),
+    line1: document.getElementById('ck_line1').value.trim(),
+    line2: document.getElementById('ck_line2').value.trim(),
+    landmark: document.getElementById('ck_landmark').value.trim(),
+    city: document.getElementById('ck_city').value.trim(),
+    state: document.getElementById('ck_state').value,
+    pincode: document.getElementById('ck_pincode').value.trim(),
+  };
+
+  const cartItems = window.SBHStore.getCart(); // [{productId, qty}] — server re-validates prices/stock
+
+  try {
+    const functions = getFunctions(app);
+    const createOrder = httpsCallable(functions, 'createOrder');
+    const result = await createOrder({ items: cartItems, address, paymentMethod: 'cod' });
     window.SBHStore.clearCart();
-    window.location.href = payMethod === 'cod' || Math.random() > 0.15 ? '/order-success.html' : '/order-failed.html';
-  }, 1200);
+    window.location.href = '/order-success.html?orderId=' + encodeURIComponent(result.data.orderId);
+  } catch (err) {
+    showToast(err.message || 'Could not place order. Please try again.', 'error');
+    btn.disabled = false; btn.textContent = 'Place Order (COD)';
+  }
 };
+
+} // end else (user signed in)
 </script>
 </body>
 </html>
