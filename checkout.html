@@ -31,8 +31,10 @@
 <script type="module" src="/js/firebase-data.js"></script>
 <script type="module">
 import SBHAuth from "/js/auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
-import { app } from "/js/firebase-init.js";
+import { db } from "/js/firebase-init.js";
+import {
+  collection, doc, runTransaction, serverTimestamp, increment,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 SBHComponents.init('shop');
 
@@ -137,14 +139,65 @@ window.placeOrder = async function(e) {
     pincode: document.getElementById('ck_pincode').value.trim(),
   };
 
-  const cartItems = window.SBHStore.getCart(); // [{productId, qty}] — server re-validates prices/stock
-
   try {
-    const functions = getFunctions(app);
-    const createOrder = httpsCallable(functions, 'createOrder');
-    const result = await createOrder({ items: cartItems, address, paymentMethod: 'cod' });
+    // Re-fetch fresh cart details right before writing, and run as a
+    // transaction so stock is decremented atomically (best effort client-side
+    // protection — not as strong as a server-side Cloud Function, but still
+    // prevents two near-simultaneous checkouts from both silently overselling
+    // within the same browser session's transaction window).
+    const freshItems = await window.SBHStore.cartDetailed();
+    if (!freshItems.length) throw new Error("Your cart is empty.");
+
+    const orderRef = doc(collection(db, "orders"));
+
+    await runTransaction(db, async (tx) => {
+      const productRefs = freshItems.map(i => doc(db, "products", i.id));
+      const snaps = await Promise.all(productRefs.map(ref => tx.get(ref)));
+
+      let subtotal = 0;
+      const orderItems = [];
+      for (let idx = 0; idx < freshItems.length; idx++) {
+        const snap = snaps[idx];
+        if (!snap.exists()) throw new Error(`${freshItems[idx].name} is no longer available.`);
+        const product = snap.data();
+        const qty = freshItems[idx].qty;
+        if ((product.stock || 0) < qty) throw new Error(`${product.name} doesn't have enough stock left.`);
+        const lineTotal = product.price * qty;
+        subtotal += lineTotal;
+        orderItems.push({
+          productId: snap.id, name: product.name, sku: product.sku || "",
+          image: (product.images && product.images[0]) || "",
+          price: product.price, qty, lineTotal,
+        });
+      }
+      for (let idx = 0; idx < freshItems.length; idx++) {
+        tx.update(productRefs[idx], { stock: snaps[idx].data().stock - freshItems[idx].qty });
+      }
+
+      const shipping = subtotal >= 999 ? 0 : 79;
+      const total = subtotal + shipping;
+
+      tx.set(orderRef, {
+        userId: user.uid,
+        items: orderItems,
+        address,
+        paymentMethod: "cod",
+        subtotal, shipping, total,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+    });
+
+    // Best-effort customer stats update (not critical if it fails)
+    try {
+      const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+      await updateDoc(doc(db, "customers", user.uid), {
+        orderCount: increment(1),
+      });
+    } catch (e) { /* non-critical */ }
+
     window.SBHStore.clearCart();
-    window.location.href = '/order-success.html?orderId=' + encodeURIComponent(result.data.orderId);
+    window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderRef.id);
   } catch (err) {
     showToast(err.message || 'Could not place order. Please try again.', 'error');
     btn.disabled = false; btn.textContent = 'Place Order (COD)';
