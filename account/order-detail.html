@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Details | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account/orders.html">Orders</a><span class="sep">/</span><span class="current" id="crumbId">Order</span></nav>
+  <div id="detailWrap"></div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script type="module">
+import SBHAuth from "/js/auth.js";
+import { db } from "/js/firebase-init.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+SBHComponents.init('');
+
+const user = await SBHAuth.getCurrentUser();
+if (!user) {
+  window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+} else {
+
+function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
+function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
+function statusLabel(v) {
+  const map = { pending:'Pending', confirmed:'Confirmed', processing:'Processing', packed:'Packed', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned', refunded:'Refunded' };
+  return map[v] || v;
+}
+
+const id = new URLSearchParams(window.location.search).get('id');
+const snap = await getDoc(doc(db, "orders", id));
+
+if (!snap.exists() || snap.data().userId !== user.uid) {
+  document.getElementById('detailWrap').innerHTML = `<div class="empty-state" style="padding:60px 20px;"><h3>Order not found</h3><p>This order doesn't exist or isn't associated with your account.</p><a href="/account/orders.html" class="btn btn-primary">Back to Orders</a></div>`;
+} else {
+  const o = { id: snap.id, ...snap.data() };
+  document.getElementById('crumbId').textContent = '#' + o.id.slice(0,8).toUpperCase();
+
+  const steps = ["pending","confirmed","processing","packed","shipped","delivered"];
+  const activeIdx = steps.includes(o.status) ? steps.indexOf(o.status) : (['cancelled','returned','refunded'].includes(o.status) ? 0 : 5);
+
+  document.getElementById('detailWrap').innerHTML = `
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;padding:20px 0 60px;" class="pdp-grid">
+    <div>
+      <div class="card" style="padding:22px;margin-bottom:20px;">
+        <div class="flex justify-between items-center" style="margin-bottom:16px;">
+          <h1 class="section-heading" style="font-size:19px;">#${o.id.slice(0,8).toUpperCase()}</h1>
+          <span class="badge badge-accent">${statusLabel(o.status)}</span>
+        </div>
+        <p class="caption-text" style="margin-bottom:20px;">Placed on ${formatDate(o.createdAt)} · Payment: Cash on Delivery</p>
+        ${o.items.map(i => `
+          <div class="cart-item">
+            <img src="${i.image}" alt="${i.name}" />
+            <div>
+              <div class="cart-item-name">${i.name}</div>
+              <div class="cart-item-meta">SKU: ${i.sku} · Qty: ${i.qty}</div>
+              <strong>${formatINR(i.lineTotal || i.price * i.qty)}</strong>
+            </div>
+          </div>`).join('')}
+      </div>
+
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Order Timeline</h3>
+        <div class="order-timeline">
+          ${steps.map((s,i) => `
+            <div class="timeline-step ${i<=activeIdx ? 'done':''}">
+              <div class="t-title">${statusLabel(s)}</div>
+              <div class="t-date">${i<=activeIdx ? formatDate(o.createdAt) : 'Pending'}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="padding:22px;margin-bottom:16px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Shipping Address</h3>
+        <p class="body-text">${o.address?.name || ''}</p>
+        <p class="text-muted" style="font-size:13px;">${o.address?.line1 || ''}${o.address?.line2 ? ', ' + o.address.line2 : ''}, ${o.address?.city || ''}, ${o.address?.state || ''} ${o.address?.pincode || ''}</p>
+        <p class="text-muted" style="font-size:13px;">${o.address?.phone || ''}</p>
+      </div>
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Payment Summary</h3>
+        <div class="summary-row"><span>Subtotal</span><span>${formatINR(o.subtotal)}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${o.shipping === 0 ? 'FREE' : formatINR(o.shipping)}</span></div>
+        <div class="summary-row total"><span>Total</span><span>${formatINR(o.total)}</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+} // end else (signed in)
+</script>
+</body>
+</html>

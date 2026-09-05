@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Orders | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account.html">My Account</a><span class="sep">/</span><span class="current">Orders</span></nav>
+  <div class="account-layout">
+    <div id="accountNavWrap"></div>
+    <div>
+      <h1 class="section-heading" style="margin-bottom:18px;">My Orders</h1>
+      <div id="ordersWrap"></div>
+    </div>
+  </div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/account-nav.js"></script>
+<script>
+SBHComponents.init('');
+document.getElementById('accountNavWrap').innerHTML = renderAccountNav('orders');
+wireAccountNavLogout();
+</script>
+<script type="module">
+import SBHAuth from "/js/auth.js";
+import { db } from "/js/firebase-init.js";
+import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const user = await SBHAuth.getCurrentUser();
+if (!user) {
+  window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+} else {
+
+function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
+function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
+function statusLabel(v) {
+  const map = { pending:'Pending', confirmed:'Confirmed', processing:'Processing', packed:'Packed', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned', refunded:'Refunded' };
+  return map[v] || v;
+}
+function statusBadge(status) {
+  const label = statusLabel(status);
+  const map = { Delivered: 'success', Shipped: 'accent', Confirmed: 'neutral', Processing: 'warning', Packed: 'neutral', Pending: 'warning', 'Out for Delivery': 'accent', Cancelled: 'danger', Returned: 'danger', Refunded: 'neutral' };
+  return `<span class="badge badge-${map[label] || 'neutral'}">${label}</span>`;
+}
+
+let myOrders = [];
+try {
+  const q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  myOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+} catch (err) {
+  // Fallback without orderBy in case a composite index isn't ready yet
+  try {
+    const q2 = query(collection(db, "orders"), where("userId", "==", user.uid));
+    const snap2 = await getDocs(q2);
+    myOrders = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e2) { myOrders = []; }
+}
+
+if (myOrders.length) {
+  document.getElementById('ordersWrap').innerHTML = `
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>Order ID</th><th>Date</th><th>Amount</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      ${myOrders.map(o => `
+        <tr>
+          <td><strong>#${o.id.slice(0,8).toUpperCase()}</strong></td>
+          <td>${formatDate(o.createdAt)}</td>
+          <td>${formatINR(o.total)}</td>
+          <td>${o.paymentMethod === 'cod' ? 'COD' : o.paymentMethod}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td><a href="/account/order-detail.html?id=${o.id}" class="btn btn-ghost btn-sm">View Order</a></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+} else {
+  document.getElementById('ordersWrap').innerHTML = `
+    <div class="empty-state">
+      <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h18M3 7l1.5 12a2 2 0 0 0 2 1.8h11a2 2 0 0 0 2-1.8L21 7"/></svg></div>
+      <h3>No orders yet</h3>
+      <p>When you place an order, it will show up here.</p>
+      <a href="/shop.html" class="btn btn-primary">Start Shopping</a>
+    </div>`;
+}
+
+} // end else (signed in)
+</script>
+</body>
+</html>
