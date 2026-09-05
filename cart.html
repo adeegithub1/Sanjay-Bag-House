@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Cart | Sanjay Bag House</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<div id="sbh-header"></div>
+
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><span class="current">Cart</span></nav>
+  <h1 class="section-heading">Your Cart</h1>
+
+  <div id="cartWrap"></div>
+</main>
+
+<div id="sbh-footer"></div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script type="module" src="/js/firebase-data.js"></script>
+<script type="module">
+SBHComponents.init('shop');
+const data = window.SBH_DATA;
+let appliedCoupon = null;
+
+async function render() {
+  const items = await window.SBHStore.cartDetailed();
+  const wrap = document.getElementById('cartWrap');
+  if (!items.length) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+        <h3>Your cart is empty</h3>
+        <p>Looks like you haven't added anything yet. Start exploring our collection.</p>
+        <a href="/shop.html" class="btn btn-primary">Continue Shopping</a>
+      </div>`;
+    return;
+  }
+  const subtotal = items.reduce((s,i) => s + i.lineTotal, 0);
+  const mrpTotal = items.reduce((s,i) => s + i.mrp * i.qty, 0);
+  const discount = (mrpTotal - subtotal) + (appliedCoupon ? appliedCoupon.amount : 0);
+  const shipping = subtotal > 999 ? 0 : 79;
+  const total = subtotal - (appliedCoupon ? appliedCoupon.amount : 0) + shipping;
+
+  wrap.innerHTML = `
+  <div class="cart-layout">
+    <div>
+      ${items.map(i => `
+        <div class="cart-item">
+          <a href="/product.html?slug=${i.slug}"><img src="${i.images[0]}" alt="${i.name}" /></a>
+          <div>
+            <div class="flex justify-between">
+              <div>
+                <a href="/product.html?slug=${i.slug}" class="cart-item-name">${i.name}</a>
+                <div class="cart-item-meta">${i.color} · SKU: ${i.sku}</div>
+              </div>
+              <strong>${data.formatINR(i.lineTotal)}</strong>
+            </div>
+            <div class="cart-item-footer">
+              <div class="qty-selector">
+                <button onclick="updateQty('${i.id}', ${i.qty-1})" aria-label="Decrease quantity">−</button>
+                <span>${i.qty}</span>
+                <button onclick="updateQty('${i.id}', ${i.qty+1})" aria-label="Increase quantity">+</button>
+              </div>
+              <button class="remove-link" onclick="removeItem('${i.id}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>`).join('')}
+      <a href="/shop.html" class="btn btn-ghost" style="margin-top:18px;">← Continue Shopping</a>
+    </div>
+
+    <div>
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
+        <div class="coupon-row">
+          <input type="text" class="form-input" id="couponInput" placeholder="Enter coupon code" />
+          <button class="btn btn-secondary btn-sm" onclick="applyCoupon()">Apply</button>
+        </div>
+        <div id="couponMsg"></div>
+        <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
+        <div class="summary-row"><span>Discount</span><span style="color:var(--color-success);">− ${data.formatINR(discount)}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
+        <div class="summary-row total"><span>Total</span><span>${data.formatINR(total)}</span></div>
+        <a href="/checkout.html" class="btn btn-primary btn-block" style="margin-top:16px;">Proceed to Checkout</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.updateQty = function(id, qty) { window.SBHStore.updateQty(id, qty); render(); };
+window.removeItem = function(id) { window.SBHStore.removeFromCart(id); showToast('Item removed from cart'); render(); };
+window.applyCoupon = async function() {
+  const code = document.getElementById('couponInput').value.trim().toUpperCase();
+  const coupon = data.COUPONS.find(c => c.code === code && c.active);
+  const msg = document.getElementById('couponMsg');
+  if (!coupon) { msg.innerHTML = `<p class="form-error">Invalid or expired coupon code.</p>`; appliedCoupon = null; render(); return; }
+  const items = await window.SBHStore.cartDetailed();
+  const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
+  if (subtotal < coupon.minOrder) { msg.innerHTML = `<p class="form-error">Minimum order of ${data.formatINR(coupon.minOrder)} required for this coupon.</p>`; appliedCoupon = null; render(); return; }
+  const amount = coupon.type === 'Percentage' ? Math.min(Math.round(subtotal * coupon.value/100), coupon.maxDiscount) : coupon.value;
+  appliedCoupon = { code: coupon.code, amount };
+  showToast('Coupon applied successfully','success');
+  render();
+};
+
+document.addEventListener('sbh:cart-updated', render);
+render();
+</script>
+</body>
+</html>
