@@ -155,6 +155,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .cat-rail-item { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; width: 62px; }
 .cat-rail-item img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--color-border); }
 .cat-rail-item span { font-size: 11px; font-weight: 600; text-align: center; color: var(--color-text); line-height: 1.2; }
+@media (min-width: 1024px) { .cat-rail { display: none; } }
 
 /* Mobile drawer */
 .drawer-overlay { position: fixed; inset: 0; background: rgba(14,27,52,0.5); z-index: 200; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
