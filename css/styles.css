@@ -248,6 +248,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .product-card .name { font-size: 13px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .product-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #fff; background: var(--color-success); padding: 2px 6px; border-radius: 4px; margin-bottom: 7px; }
 .product-rating svg { width: 10px; height: 10px; }
+.pdp-rating { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-muted); font-weight: 600; }
+.pdp-rating .stars { color: var(--color-star); font-size: 14px; letter-spacing: 1px; }
 .price-row { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
 .price-row .price-text { font-size: 15.5px; }
 .price-row .mrp { text-decoration: line-through; color: var(--color-muted); font-size: 12px; }
