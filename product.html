@@ -72,7 +72,7 @@ function renderPDP() {
       <a class="brand-link" href="/shop.html">${p.brand}</a>
       <h1>${p.name}</h1>
       <div class="pdp-meta-row">
-        <span class="product-rating"><span class="stars">${stars(p.rating)}</span> ${p.rating} (${p.reviews} reviews)</span>
+        <span class="pdp-rating"><span class="stars">${stars(p.rating)}</span> ${p.rating} (${p.reviews} reviews)</span>
         <span class="caption-text">SKU: ${p.sku}</span>
       </div>
       <div class="pdp-price-block">
@@ -96,6 +96,11 @@ function renderPDP() {
         <button class="btn btn-icon btn-ghost" aria-label="Toggle wishlist" onclick="toggleWishlistPDP()" id="pdpWishBtn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="${wished?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6Z"/></svg>
         </button>
+      </div>
+
+      <div class="pdp-sticky-bar">
+        <button class="btn btn-secondary" ${p.stock<=0?'disabled':''} onclick="addToCartPDP()">Add to Cart</button>
+        <button class="btn btn-primary" ${p.stock<=0?'disabled':''} onclick="buyNowPDP()">Buy Now</button>
       </div>
 
       <div class="trust-strip">
@@ -152,7 +157,7 @@ function renderTabs() {
     list.innerHTML = reviews.map(r => `
       <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
         <div class="flex items-center gap-8" style="margin-bottom:6px;">
-          <span class="stars" style="color:var(--color-accent);">${stars(r.rating)}</span>
+          <span class="stars" style="color:var(--color-star);">${stars(r.rating)}</span>
           <strong style="font-size:13.5px;">${r.customer}</strong>
           ${r.verified ? '<span class="badge badge-success">Verified Purchase</span>' : ''}
         </div>
