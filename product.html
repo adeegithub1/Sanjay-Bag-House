@@ -122,7 +122,7 @@ window.toggleWishlistPDP = function(){
   renderPDP();
 };
 
-function renderTabs() {
+async function renderTabs() {
   document.getElementById('tabPanels').innerHTML = `
     <div class="tab-panel active" data-panel="description">
       <p class="body-text" style="max-width:760px;">${p.desc}</p>
@@ -148,25 +148,86 @@ function renderTabs() {
       <p class="body-text"><strong>Returns:</strong> This item is eligible for return or exchange within 7 days of delivery, provided it is unused and in original packaging. <a href="/return-policy.html" style="color:var(--color-accent);font-weight:600;">Read full return policy →</a></p>
     </div>
     <div class="tab-panel" data-panel="reviews">
+      <div id="reviewFormWrap" style="margin-bottom:24px;"></div>
       <div id="reviewsList"></div>
     </div>
   `;
-  const reviews = data.REVIEWS.filter(r => r.productId === p.id && r.status === 'Approved');
+
+  // ---- Real reviews (Firestore) ----
+  const { db } = await import("/js/firebase-init.js");
+  const { collection, query, where, getDocs, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+  const SBHAuthMod = (await import("/js/auth.js")).default;
+
+  async function loadReviews() {
+    const q = query(collection(db, "reviews"), where("productId", "==", p.id), where("status", "==", "approved"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
   const list = document.getElementById('reviewsList');
-  if (reviews.length) {
-    list.innerHTML = reviews.map(r => `
+  const realReviews = await loadReviews();
+  if (realReviews.length) {
+    list.innerHTML = realReviews.map(r => `
       <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
         <div class="flex items-center gap-8" style="margin-bottom:6px;">
           <span class="stars" style="color:var(--color-star);">${stars(r.rating)}</span>
-          <strong style="font-size:13.5px;">${r.customer}</strong>
-          ${r.verified ? '<span class="badge badge-success">Verified Purchase</span>' : ''}
+          <strong style="font-size:13.5px;">${r.customerName || 'Customer'}</strong>
         </div>
         <p class="body-text" style="margin-bottom:4px;">${r.text}</p>
-        <span class="caption-text">${r.date}</span>
+        <span class="caption-text">${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>
       </div>`).join('');
   } else {
     list.innerHTML = `<p class="text-muted">No reviews yet for this product. Be the first to review it after your purchase.</p>`;
   }
+
+  // Review submission form (signed-in users only)
+  const currentUser = await SBHAuthMod.getCurrentUser();
+  const formWrap = document.getElementById('reviewFormWrap');
+  if (currentUser) {
+    formWrap.innerHTML = `
+      <div class="card" style="padding:18px;">
+        <h4 style="font-size:13.5px;font-weight:700;margin-bottom:12px;">Write a Review</h4>
+        <div class="form-group">
+          <label class="form-label">Your Rating</label>
+          <select id="reviewRatingInput" class="form-select" style="max-width:160px;">
+            <option value="5">★★★★★ (5)</option>
+            <option value="4">★★★★☆ (4)</option>
+            <option value="3">★★★☆☆ (3)</option>
+            <option value="2">★★☆☆☆ (2)</option>
+            <option value="1">★☆☆☆☆ (1)</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Your Review</label><textarea id="reviewTextInput" class="form-textarea" placeholder="Share your experience with this product..."></textarea></div>
+        <button class="btn btn-primary btn-sm" id="submitReviewBtn">Submit Review</button>
+        <p class="caption-text" style="margin-top:8px;">Your review will be visible after admin approval.</p>
+      </div>`;
+    document.getElementById('submitReviewBtn').addEventListener('click', async () => {
+      const text = document.getElementById('reviewTextInput').value.trim();
+      const rating = Number(document.getElementById('reviewRatingInput').value);
+      if (!text) { showToast('Please write something before submitting.', 'error'); return; }
+      const btn = document.getElementById('submitReviewBtn');
+      btn.disabled = true; btn.textContent = 'Submitting...';
+      try {
+        const profile = await SBHAuthMod.getCustomerProfile(currentUser.uid);
+        await addDoc(collection(db, "reviews"), {
+          productId: p.id,
+          userId: currentUser.uid,
+          customerName: profile?.name || currentUser.displayName || 'Customer',
+          rating, text,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+        });
+        showToast('Review submitted — pending approval. Thank you!', 'success');
+        formWrap.innerHTML = `<p class="caption-text">Thanks for your review — it'll appear here once approved.</p>`;
+      } catch (err) {
+        showToast('Could not submit review. Please try again.', 'error');
+        btn.disabled = false; btn.textContent = 'Submit Review';
+      }
+    });
+  } else {
+    formWrap.innerHTML = `<p class="caption-text"><a href="/login.html?next=${encodeURIComponent(location.pathname+location.search)}" style="color:var(--color-accent);font-weight:600;">Log in</a> to write a review.</p>`;
+  }
+
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -179,7 +240,7 @@ function renderTabs() {
 }
 
 renderPDP();
-renderTabs();
+await renderTabs();
 document.getElementById('relatedGrid').innerHTML = data.getRelated(p).map(rp => renderProductCard(rp)).join('');
 })();
 </script>
