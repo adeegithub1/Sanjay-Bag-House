@@ -67,16 +67,17 @@
       <div id="storePanelContact" class="hidden">
         <div class="form-section">
           <h3>Contact Information</h3>
+          <p class="desc">This information appears in your site footer and on the Contact page.</p>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" value="+91 98765 43210" /></div>
-            <div class="form-group"><label class="form-label">WhatsApp Number</label><input class="form-input" value="+91 98765 43210" /></div>
+            <div class="form-group"><label class="form-label">Phone Number</label><input id="cs_phone" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
+            <div class="form-group"><label class="form-label">WhatsApp Number</label><input id="cs_whatsapp" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
           </div>
-          <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" value="support@sanjaybaghouse.in" /></div>
-          <div class="form-group"><label class="form-label">Store Address</label><textarea class="form-textarea">14, MG Road, Pune, Maharashtra 411001</textarea></div>
-          <div class="form-group"><label class="form-label">Google Maps URL</label><input class="form-input" placeholder="https://maps.google.com/..." /></div>
-          <div class="form-group"><label class="form-label">Business Hours</label><input class="form-input" value="Mon-Sat: 10:00 AM - 8:00 PM, Sun: 11:00 AM - 6:00 PM" /></div>
+          <div class="form-group"><label class="form-label">Email Address</label><input id="cs_email" class="form-input" placeholder="you@yourdomain.com" /></div>
+          <div class="form-group"><label class="form-label">Store Address</label><textarea id="cs_address" class="form-textarea" placeholder="Your store's full address"></textarea></div>
+          <div class="form-group"><label class="form-label">Google Maps URL</label><input id="cs_maps" class="form-input" placeholder="https://maps.google.com/..." /></div>
+          <div class="form-group"><label class="form-label">Business Hours</label><input id="cs_hours" class="form-input" placeholder="e.g. Mon-Sat: 10:00 AM - 8:00 PM" /></div>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
+        <button class="btn btn-primary" id="cs_saveBtn" onclick="saveContactPanel()">Save Changes</button>
       </div>
 
       <div id="storePanelSocial" class="hidden">
@@ -107,8 +108,40 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
+<script type="module" src="/js/store-settings.js"></script>
+<script type="module">
+(async () => {
+  AdminShell.init('store-settings', 'Store Settings');
+
+  const settings = await window.SBHStoreSettings.loadContactSettings();
+  document.getElementById('cs_phone').value = settings.phone;
+  document.getElementById('cs_whatsapp').value = settings.whatsapp;
+  document.getElementById('cs_email').value = settings.email;
+  document.getElementById('cs_address').value = settings.address;
+  document.getElementById('cs_maps').value = settings.mapsUrl;
+  document.getElementById('cs_hours').value = settings.hours;
+
+  window.saveContactPanel = async function() {
+    const btn = document.getElementById('cs_saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveContactSettings({
+        phone: document.getElementById('cs_phone').value.trim(),
+        whatsapp: document.getElementById('cs_whatsapp').value.trim(),
+        email: document.getElementById('cs_email').value.trim(),
+        address: document.getElementById('cs_address').value.trim(),
+        mapsUrl: document.getElementById('cs_maps').value.trim(),
+        hours: document.getElementById('cs_hours').value.trim(),
+      });
+      showToast('Contact information saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  };
+})();
+</script>
 <script>
-AdminShell.init('store-settings', 'Store Settings');
 const panels = { branding: 'storePanelBranding', contact: 'storePanelContact', social: 'storePanelSocial', business: 'storePanelBusiness' };
 document.querySelectorAll('#storeTabs .settings-tab').forEach(tab => tab.addEventListener('click', function() {
   document.querySelectorAll('#storeTabs .settings-tab').forEach(t=>t.classList.remove('active'));
