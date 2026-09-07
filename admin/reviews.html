@@ -40,47 +40,84 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script>
-AdminShell.init('reviews', 'Reviews');
-const data = window.SBH_DATA;
-let reviews = data.REVIEWS.map(r => ({...r}));
-let filter = 'All';
+<script type="module">
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-function stars(n) { return "★★★★★☆☆☆☆☆".slice(5-n,10-n); }
+(async () => {
+  AdminShell.init('reviews', 'Reviews');
 
-function render() {
-  let list = filter === 'All' ? reviews : reviews.filter(r => r.status === filter);
-  document.getElementById('revBody').innerHTML = list.map(r => {
-    const p = data.PRODUCTS.find(pp => pp.id === r.productId);
-    const statusCls = r.status === 'Approved' ? 'success' : r.status === 'Rejected' ? 'danger' : 'warning';
-    return `
-    <tr>
-      <td>${r.customer} ${r.verified ? '<span class="badge badge-success" style="margin-left:6px;">Verified</span>' : ''}</td>
-      <td>${p ? p.name : '—'}</td>
-      <td><span style="color:var(--color-accent);">${stars(r.rating)}</span></td>
-      <td style="max-width:280px;font-size:12.5px;">${r.text}</td>
-      <td>${r.date}</td>
-      <td><span class="badge badge-${statusCls}">${r.status}</span></td>
-      <td>
-        <div class="row-actions">
-          <button class="btn btn-ghost btn-sm" onclick="setReviewStatus('${r.id}','Approved')">Approve</button>
-          <button class="btn btn-ghost btn-sm" onclick="setReviewStatus('${r.id}','Rejected')">Reject</button>
-          <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteReview('${r.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-}
-window.setReviewStatus = function(id, status) { const r = reviews.find(x=>x.id===id); r.status = status; showToast(`Review ${status.toLowerCase()}`,'success'); render(); };
-window.deleteReview = function(id) { showConfirmDialog('Delete this review permanently?', () => { reviews = reviews.filter(r=>r.id!==id); showToast('Review deleted','success'); render(); }); };
+  function stars(n) { return "★★★★★☆☆☆☆☆".slice(5-n,10-n); }
+  function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
+  function labelOf(s) { return { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[s] || s; }
 
-document.querySelectorAll('#reviewTabs .pill-tab').forEach(btn => btn.addEventListener('click', function() {
-  document.querySelectorAll('#reviewTabs .pill-tab').forEach(b=>b.classList.remove('active'));
-  this.classList.add('active');
-  filter = this.dataset.f;
+  const [reviewSnap, prodSnap] = await Promise.all([
+    getDocs(collection(db, "reviews")),
+    getDocs(collection(db, "products")),
+  ]);
+  const products = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let reviews = reviewSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let filter = 'All';
+
+  function render() {
+    let list = filter === 'All' ? reviews : reviews.filter(r => labelOf(r.status) === filter);
+    document.getElementById('revBody').innerHTML = list.map(r => {
+      const p = products.find(pp => pp.id === r.productId);
+      const statusCls = r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'danger' : 'warning';
+      return `
+      <tr>
+        <td>${r.customerName || 'Customer'}</td>
+        <td>${p ? p.name : '—'}</td>
+        <td><span style="color:var(--color-star);">${stars(r.rating)}</span></td>
+        <td style="max-width:280px;font-size:12.5px;">${r.text}</td>
+        <td>${formatDate(r.createdAt)}</td>
+        <td><span class="badge badge-${statusCls}">${labelOf(r.status)}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-ghost btn-sm" onclick="setReviewStatus('${r.id}','approved')">Approve</button>
+            <button class="btn btn-ghost btn-sm" onclick="setReviewStatus('${r.id}','rejected')">Reject</button>
+            <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteReview('${r.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    if (!list.length) {
+      document.getElementById('revBody').innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No reviews${filter!=='All' ? ' with this status' : ''} yet.</p></div></td></tr>`;
+    }
+  }
+
+  window.setReviewStatus = async function(id, status) {
+    try {
+      await updateDoc(doc(db, "reviews", id), { status });
+      const r = reviews.find(x=>x.id===id);
+      r.status = status;
+      showToast(`Review ${labelOf(status).toLowerCase()}`, 'success');
+      render();
+    } catch (err) {
+      showToast('Could not update review. Please try again.', 'error');
+    }
+  };
+  window.deleteReview = function(id) {
+    showConfirmDialog('Delete this review permanently?', async () => {
+      try {
+        await deleteDoc(doc(db, "reviews", id));
+        reviews = reviews.filter(r=>r.id!==id);
+        showToast('Review deleted', 'success');
+        render();
+      } catch (err) {
+        showToast('Could not delete review. Please try again.', 'error');
+      }
+    });
+  };
+
+  document.querySelectorAll('#reviewTabs .pill-tab').forEach(btn => btn.addEventListener('click', function() {
+    document.querySelectorAll('#reviewTabs .pill-tab').forEach(b=>b.classList.remove('active'));
+    this.classList.add('active');
+    filter = this.dataset.f;
+    render();
+  }));
   render();
-}));
-render();
+})();
 </script>
 </body>
 </html>
