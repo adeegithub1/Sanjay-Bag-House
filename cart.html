@@ -3,116 +3,158 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Your Cart | Sanjay Bag House</title>
+<title>Coupons | Sanjay Bag House Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
 </head>
-<body>
-<div id="sbh-header"></div>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head">
+        <div><h1>Coupons</h1><p>Create and manage discount codes.</p></div>
+        <button class="btn btn-primary" onclick="openCouponModal()">+ Add Coupon</button>
+      </div>
 
-<main class="container">
-  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><span class="current">Cart</span></nav>
-  <h1 class="section-heading">Your Cart</h1>
+      <div class="admin-panel">
+        <div class="dt-wrap">
+          <table class="data-table">
+            <thead><tr><th>Code</th><th>Discount</th><th>Min Order</th><th>Usage</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="couponBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <div id="cartWrap"></div>
-</main>
-
-<div id="sbh-footer"></div>
+<div class="modal-overlay" id="couponModal">
+  <div class="modal-box wide">
+    <div class="modal-head"><h3>Add Coupon</h3><button class="icon-btn" onclick="closeCouponModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Coupon Code</label><input class="form-input" id="cc_code" placeholder="e.g. FESTIVE20" /></div>
+        <div class="form-group"><label class="form-label">Discount Type</label><select class="form-select" id="cc_type"><option>Percentage</option><option>Flat</option></select></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Discount Value</label><input type="number" class="form-input" id="cc_value" placeholder="e.g. 20" /></div>
+        <div class="form-group"><label class="form-label">Maximum Discount (₹)</label><input type="number" class="form-input" id="cc_max" placeholder="e.g. 500" /></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Minimum Order (₹)</label><input type="number" class="form-input" id="cc_min" placeholder="e.g. 999" /></div>
+        <div class="form-group"><label class="form-label">Usage Limit</label><input type="number" class="form-input" id="cc_usage" placeholder="e.g. 300" /></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-input" id="cc_start" /></div>
+        <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-input" id="cc_end" /></div>
+      </div>
+      <div class="form-group"><label class="form-label">Per User Limit</label><input type="number" class="form-input" id="cc_peruser" value="1" /></div>
+      <div class="flex justify-between items-center"><span class="body-text">Active</span><label class="toggle"><input type="checkbox" id="cc_active" checked/><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeCouponModal()">Cancel</button><button class="btn btn-primary" onclick="saveCoupon()">Save Coupon</button></div>
+  </div>
+</div>
 
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
-<script src="/js/components.js"></script>
-<script type="module" src="/js/firebase-data.js"></script>
+<script src="/js/admin-shell.js"></script>
 <script type="module">
-SBHComponents.init('shop');
-const data = window.SBH_DATA;
-let appliedCoupon = null;
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-async function render() {
-  const items = await window.SBHStore.cartDetailed();
-  const wrap = document.getElementById('cartWrap');
-  if (!items.length) {
-    wrap.innerHTML = `
-      <div class="empty-state">
-        <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
-        <h3>Your cart is empty</h3>
-        <p>Looks like you haven't added anything yet. Start exploring our collection.</p>
-        <a href="/shop.html" class="btn btn-primary">Continue Shopping</a>
-      </div>`;
-    return;
+(async () => {
+  AdminShell.init('coupons', 'Coupons');
+
+  function formatINR(n) { return "₹" + Math.round(n||0).toLocaleString("en-IN"); }
+
+  async function loadCoupons() {
+    const snap = await getDocs(collection(db, "coupons"));
+    return snap.docs.map(d => ({ code: d.id, ...d.data() }));
   }
-  const subtotal = items.reduce((s,i) => s + i.lineTotal, 0);
-  const mrpTotal = items.reduce((s,i) => s + i.mrp * i.qty, 0);
-  const discount = (mrpTotal - subtotal) + (appliedCoupon ? appliedCoupon.amount : 0);
-  const shipping = subtotal > 999 ? 0 : 79;
-  const total = subtotal - (appliedCoupon ? appliedCoupon.amount : 0) + shipping;
+  let coupons = await loadCoupons();
 
-  wrap.innerHTML = `
-  <div class="cart-layout">
-    <div>
-      ${items.map(i => `
-        <div class="cart-item">
-          <a href="/product.html?slug=${i.slug}"><img src="${i.images[0]}" alt="${i.name}" /></a>
-          <div>
-            <div class="flex justify-between">
-              <div>
-                <a href="/product.html?slug=${i.slug}" class="cart-item-name">${i.name}</a>
-                <div class="cart-item-meta">${i.color} · SKU: ${i.sku}</div>
-              </div>
-              <strong>${data.formatINR(i.lineTotal)}</strong>
-            </div>
-            <div class="cart-item-footer">
-              <div class="qty-selector">
-                <button onclick="updateQty('${i.id}', ${i.qty-1})" aria-label="Decrease quantity">−</button>
-                <span>${i.qty}</span>
-                <button onclick="updateQty('${i.id}', ${i.qty+1})" aria-label="Increase quantity">+</button>
-              </div>
-              <button class="remove-link" onclick="removeItem('${i.id}')">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
-                Remove
-              </button>
-            </div>
+  function render() {
+    document.getElementById('couponBody').innerHTML = coupons.map(c => `
+      <tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.type === 'Percentage' ? c.value + '% OFF' : formatINR(c.value) + ' OFF'}</td>
+        <td>${formatINR(c.minOrder)}</td>
+        <td>${c.used||0} / ${c.usageLimit||'∞'}</td>
+        <td>${c.end || '—'}</td>
+        <td><span class="badge badge-${c.active ? 'success' : 'neutral'}">${c.active ? 'Active' : 'Inactive'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button aria-label="Toggle" onclick="toggleCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></button>
+            <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
           </div>
-        </div>`).join('')}
-      <a href="/shop.html" class="btn btn-ghost" style="margin-top:18px;">← Continue Shopping</a>
-    </div>
+        </td>
+      </tr>`).join('');
+    if (!coupons.length) {
+      document.getElementById('couponBody').innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No coupons yet. Click "+ Add Coupon" to create one.</p></div></td></tr>`;
+    }
+  }
 
-    <div>
-      <div class="card" style="padding:22px;">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
-        <div class="coupon-row">
-          <input type="text" class="form-input" id="couponInput" placeholder="Enter coupon code" />
-          <button class="btn btn-secondary btn-sm" onclick="applyCoupon()">Apply</button>
-        </div>
-        <div id="couponMsg"></div>
-        <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
-        <div class="summary-row"><span>Discount</span><span style="color:var(--color-success);">− ${data.formatINR(discount)}</span></div>
-        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
-        <div class="summary-row total"><span>Total</span><span>${data.formatINR(total)}</span></div>
-        <a href="/checkout.html" class="btn btn-primary btn-block" style="margin-top:16px;">Proceed to Checkout</a>
-      </div>
-    </div>
-  </div>`;
-}
+  window.toggleCoupon = async function(code) {
+    const c = coupons.find(x=>x.code===code);
+    try {
+      await updateDoc(doc(db, "coupons", code), { active: !c.active });
+      c.active = !c.active;
+      showToast('Coupon status updated', 'success');
+      render();
+    } catch (err) {
+      showToast('Could not update coupon. Please try again.', 'error');
+    }
+  };
+  window.deleteCoupon = function(code) {
+    showConfirmDialog('Delete this coupon? It will no longer be usable at checkout.', async () => {
+      try {
+        await deleteDoc(doc(db, "coupons", code));
+        coupons = coupons.filter(c=>c.code!==code);
+        showToast('Coupon deleted', 'success');
+        render();
+      } catch (err) {
+        showToast('Could not delete coupon. Please try again.', 'error');
+      }
+    });
+  };
+  window.openCouponModal = function() { document.getElementById('couponModal').classList.add('open'); };
+  window.closeCouponModal = function() { document.getElementById('couponModal').classList.remove('open'); };
+  window.saveCoupon = async function() {
+    const code = document.getElementById('cc_code').value.trim().toUpperCase();
+    if (!code) { showToast('Please enter a coupon code', 'error'); return; }
 
-window.updateQty = function(id, qty) { window.SBHStore.updateQty(id, qty); render(); };
-window.removeItem = function(id) { window.SBHStore.removeFromCart(id); showToast('Item removed from cart'); render(); };
-window.applyCoupon = async function() {
-  const code = document.getElementById('couponInput').value.trim().toUpperCase();
-  const coupon = data.COUPONS.find(c => c.code === code && c.active);
-  const msg = document.getElementById('couponMsg');
-  if (!coupon) { msg.innerHTML = `<p class="form-error">Invalid or expired coupon code.</p>`; appliedCoupon = null; render(); return; }
-  const items = await window.SBHStore.cartDetailed();
-  const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
-  if (subtotal < coupon.minOrder) { msg.innerHTML = `<p class="form-error">Minimum order of ${data.formatINR(coupon.minOrder)} required for this coupon.</p>`; appliedCoupon = null; render(); return; }
-  const amount = coupon.type === 'Percentage' ? Math.min(Math.round(subtotal * coupon.value/100), coupon.maxDiscount) : coupon.value;
-  appliedCoupon = { code: coupon.code, amount };
-  showToast('Coupon applied successfully','success');
+    const existing = await getDoc(doc(db, "coupons", code));
+    if (existing.exists()) { showToast('A coupon with this code already exists.', 'error'); return; }
+
+    const couponData = {
+      type: document.getElementById('cc_type').value,
+      value: Number(document.getElementById('cc_value').value)||0,
+      maxDiscount: Number(document.getElementById('cc_max').value)||0,
+      minOrder: Number(document.getElementById('cc_min').value)||0,
+      usageLimit: Number(document.getElementById('cc_usage').value)||0,
+      used: 0,
+      start: document.getElementById('cc_start').value,
+      end: document.getElementById('cc_end').value,
+      perUser: Number(document.getElementById('cc_peruser').value)||1,
+      active: document.getElementById('cc_active').checked,
+    };
+    try {
+      await setDoc(doc(db, "coupons", code), couponData);
+      coupons.push({ code, ...couponData });
+      closeCouponModal();
+      showToast('Coupon created successfully', 'success');
+      render();
+    } catch (err) {
+      showToast('Could not create coupon. Please try again.', 'error');
+    }
+  };
   render();
-};
-
-document.addEventListener('sbh:cart-updated', render);
-render();
+})();
 </script>
 </body>
 </html>
