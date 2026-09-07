@@ -63,47 +63,98 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script>
-AdminShell.init('coupons', 'Coupons');
-const data = window.SBH_DATA;
-let coupons = data.COUPONS.map(c => ({...c}));
+<script type="module">
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-function render() {
-  document.getElementById('couponBody').innerHTML = coupons.map(c => `
-    <tr>
-      <td><strong>${c.code}</strong></td>
-      <td>${c.type === 'Percentage' ? c.value + '% OFF' : data.formatINR(c.value) + ' OFF'}</td>
-      <td>${data.formatINR(c.minOrder)}</td>
-      <td>${c.used} / ${c.usageLimit}</td>
-      <td>${c.end}</td>
-      <td><span class="badge badge-${c.active ? 'success' : 'neutral'}">${c.active ? 'Active' : 'Inactive'}</span></td>
-      <td>
-        <div class="row-actions">
-          <button aria-label="Toggle" onclick="toggleCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></button>
-          <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
-        </div>
-      </td>
-    </tr>`).join('');
-}
-window.toggleCoupon = function(code) { const c = coupons.find(x=>x.code===code); c.active = !c.active; showToast('Coupon status updated','success'); render(); };
-window.deleteCoupon = function(code) { showConfirmDialog('Delete this coupon? It will no longer be usable at checkout.', () => { coupons = coupons.filter(c=>c.code!==code); showToast('Coupon deleted','success'); render(); }); };
-window.openCouponModal = function() { document.getElementById('couponModal').classList.add('open'); };
-window.closeCouponModal = function() { document.getElementById('couponModal').classList.remove('open'); };
-window.saveCoupon = function() {
-  const code = document.getElementById('cc_code').value.trim().toUpperCase();
-  if (!code) { showToast('Please enter a coupon code','error'); return; }
-  coupons.push({
-    code, type: document.getElementById('cc_type').value, value: Number(document.getElementById('cc_value').value)||0,
-    maxDiscount: Number(document.getElementById('cc_max').value)||0, minOrder: Number(document.getElementById('cc_min').value)||0,
-    usageLimit: Number(document.getElementById('cc_usage').value)||0, used: 0,
-    start: document.getElementById('cc_start').value, end: document.getElementById('cc_end').value,
-    perUser: Number(document.getElementById('cc_peruser').value)||1, active: document.getElementById('cc_active').checked,
-  });
-  closeCouponModal();
-  showToast('Coupon created successfully','success');
+(async () => {
+  AdminShell.init('coupons', 'Coupons');
+
+  function formatINR(n) { return "₹" + Math.round(n||0).toLocaleString("en-IN"); }
+
+  async function loadCoupons() {
+    const snap = await getDocs(collection(db, "coupons"));
+    return snap.docs.map(d => ({ code: d.id, ...d.data() }));
+  }
+  let coupons = await loadCoupons();
+
+  function render() {
+    document.getElementById('couponBody').innerHTML = coupons.map(c => `
+      <tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.type === 'Percentage' ? c.value + '% OFF' : formatINR(c.value) + ' OFF'}</td>
+        <td>${formatINR(c.minOrder)}</td>
+        <td>${c.used||0} / ${c.usageLimit||'∞'}</td>
+        <td>${c.end || '—'}</td>
+        <td><span class="badge badge-${c.active ? 'success' : 'neutral'}">${c.active ? 'Active' : 'Inactive'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button aria-label="Toggle" onclick="toggleCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></button>
+            <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteCoupon('${c.code}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+          </div>
+        </td>
+      </tr>`).join('');
+    if (!coupons.length) {
+      document.getElementById('couponBody').innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No coupons yet. Click "+ Add Coupon" to create one.</p></div></td></tr>`;
+    }
+  }
+
+  window.toggleCoupon = async function(code) {
+    const c = coupons.find(x=>x.code===code);
+    try {
+      await updateDoc(doc(db, "coupons", code), { active: !c.active });
+      c.active = !c.active;
+      showToast('Coupon status updated', 'success');
+      render();
+    } catch (err) {
+      showToast('Could not update coupon. Please try again.', 'error');
+    }
+  };
+  window.deleteCoupon = function(code) {
+    showConfirmDialog('Delete this coupon? It will no longer be usable at checkout.', async () => {
+      try {
+        await deleteDoc(doc(db, "coupons", code));
+        coupons = coupons.filter(c=>c.code!==code);
+        showToast('Coupon deleted', 'success');
+        render();
+      } catch (err) {
+        showToast('Could not delete coupon. Please try again.', 'error');
+      }
+    });
+  };
+  window.openCouponModal = function() { document.getElementById('couponModal').classList.add('open'); };
+  window.closeCouponModal = function() { document.getElementById('couponModal').classList.remove('open'); };
+  window.saveCoupon = async function() {
+    const code = document.getElementById('cc_code').value.trim().toUpperCase();
+    if (!code) { showToast('Please enter a coupon code', 'error'); return; }
+
+    const existing = await getDoc(doc(db, "coupons", code));
+    if (existing.exists()) { showToast('A coupon with this code already exists.', 'error'); return; }
+
+    const couponData = {
+      type: document.getElementById('cc_type').value,
+      value: Number(document.getElementById('cc_value').value)||0,
+      maxDiscount: Number(document.getElementById('cc_max').value)||0,
+      minOrder: Number(document.getElementById('cc_min').value)||0,
+      usageLimit: Number(document.getElementById('cc_usage').value)||0,
+      used: 0,
+      start: document.getElementById('cc_start').value,
+      end: document.getElementById('cc_end').value,
+      perUser: Number(document.getElementById('cc_peruser').value)||1,
+      active: document.getElementById('cc_active').checked,
+    };
+    try {
+      await setDoc(doc(db, "coupons", code), couponData);
+      coupons.push({ code, ...couponData });
+      closeCouponModal();
+      showToast('Coupon created successfully', 'success');
+      render();
+    } catch (err) {
+      showToast('Could not create coupon. Please try again.', 'error');
+    }
+  };
   render();
-};
-render();
+})();
 </script>
 </body>
 </html>
