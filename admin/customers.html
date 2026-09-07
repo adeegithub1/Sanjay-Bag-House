@@ -47,51 +47,74 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script>
-AdminShell.init('customers', 'Customers');
-const data = window.SBH_DATA;
+<script type="module">
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-function render() {
-  const q = document.getElementById('cSearch').value.toLowerCase();
-  const list = data.CUSTOMERS.filter(c => (c.name + c.email).toLowerCase().includes(q));
-  document.getElementById('custBody').innerHTML = list.map(c => `
-    <tr>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.email}</td>
-      <td>${c.phone}</td>
-      <td>${c.orders}</td>
-      <td>${data.formatINR(c.totalSpent)}</td>
-      <td>${c.joined}</td>
-      <td><span class="badge badge-${c.status==='Active'?'success':'neutral'}">${c.status}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openCustDrawer('${c.id}')">View</button></td>
-    </tr>`).join('');
-}
+(async () => {
+  AdminShell.init('customers', 'Customers');
 
-window.openCustDrawer = function(id) {
-  const c = data.CUSTOMERS.find(x=>x.id===id);
-  const custOrders = data.ORDERS.filter(o => o.customer === c.name);
-  document.getElementById('custDrawerBody').innerHTML = `
-    <div class="flex items-center gap-8" style="margin-bottom:18px;">
-      <div class="admin-avatar" style="width:48px;height:48px;font-size:16px;">${c.name.split(' ').map(n=>n[0]).join('')}</div>
-      <div><strong style="font-size:15px;">${c.name}</strong><div class="caption-text">${c.status}</div></div>
-    </div>
-    <div class="form-group"><label class="form-label">Email</label><p class="body-text">${c.email}</p></div>
-    <div class="form-group"><label class="form-label">Phone</label><p class="body-text">${c.phone}</p></div>
-    <div class="form-group"><label class="form-label">Location</label><p class="body-text">${c.city}, ${c.state}</p></div>
-    <div class="form-row form-row-2" style="margin-bottom:20px;">
-      <div class="stat-card"><div class="value" style="font-size:17px;">${c.orders}</div><div class="label">Total Orders</div></div>
-      <div class="stat-card"><div class="value" style="font-size:17px;">${data.formatINR(c.totalSpent)}</div><div class="label">Total Spent</div></div>
-    </div>
-    <h4 style="font-size:13px;font-weight:700;margin-bottom:10px;">Recent Orders</h4>
-    ${custOrders.length ? custOrders.slice(0,4).map(o => `<div class="flex justify-between" style="padding:9px 0;border-bottom:1px solid var(--color-border);font-size:13px;"><span>${o.id}</span><span class="text-muted">${data.formatINR(o.total)}</span></div>`).join('') : '<p class="text-muted" style="font-size:13px;">No orders yet.</p>'}
-  `;
-  document.getElementById('custDrawer').classList.add('open');
-  document.getElementById('custDrawerOverlay').classList.add('open');
-};
-window.closeCustDrawer = function() { document.getElementById('custDrawer').classList.remove('open'); document.getElementById('custDrawerOverlay').classList.remove('open'); };
+  function formatINR(n) { return "₹" + Math.round(n||0).toLocaleString("en-IN"); }
+  function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
-document.getElementById('cSearch').addEventListener('input', render);
-render();
+  const [custSnap, orderSnap] = await Promise.all([
+    getDocs(collection(db, "customers")),
+    getDocs(collection(db, "orders")),
+  ]);
+  const allOrders = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const customers = custSnap.docs.map(d => {
+    const c = { id: d.id, ...d.data() };
+    const custOrders = allOrders.filter(o => o.userId === c.id);
+    c._orders = custOrders;
+    c._orderCount = custOrders.length;
+    c._totalSpent = custOrders.reduce((s,o) => s + (o.total||0), 0);
+    return c;
+  });
+
+  function render() {
+    const q = document.getElementById('cSearch').value.toLowerCase();
+    const list = customers.filter(c => ((c.name||'') + (c.email||'')).toLowerCase().includes(q));
+    document.getElementById('custBody').innerHTML = list.map(c => `
+      <tr>
+        <td><strong>${c.name || '—'}</strong></td>
+        <td>${c.email || '—'}</td>
+        <td>${c.phone || '—'}</td>
+        <td>${c._orderCount}</td>
+        <td>${formatINR(c._totalSpent)}</td>
+        <td>${formatDate(c.createdAt)}</td>
+        <td><span class="badge badge-${c._orderCount > 0 ? 'success' : 'neutral'}">${c._orderCount > 0 ? 'Active' : 'New'}</span></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openCustDrawer('${c.id}')">View</button></td>
+      </tr>`).join('');
+    if (!list.length) {
+      document.getElementById('custBody').innerHTML = `<tr><td colspan="8"><div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No customers found.</p></div></td></tr>`;
+    }
+  }
+
+  window.openCustDrawer = function(id) {
+    const c = customers.find(x=>x.id===id);
+    document.getElementById('custDrawerBody').innerHTML = `
+      <div class="flex items-center gap-8" style="margin-bottom:18px;">
+        <div class="admin-avatar" style="width:48px;height:48px;font-size:16px;">${(c.name||'?').split(' ').map(n=>n[0]).join('').toUpperCase()}</div>
+        <div><strong style="font-size:15px;">${c.name || '—'}</strong><div class="caption-text">${c._orderCount > 0 ? 'Active' : 'New'} customer</div></div>
+      </div>
+      <div class="form-group"><label class="form-label">Email</label><p class="body-text">${c.email || '—'}</p></div>
+      <div class="form-group"><label class="form-label">Phone</label><p class="body-text">${c.phone || '—'}</p></div>
+      <div class="form-group"><label class="form-label">Joined</label><p class="body-text">${formatDate(c.createdAt)}</p></div>
+      <div class="form-row form-row-2" style="margin-bottom:20px;">
+        <div class="stat-card"><div class="value" style="font-size:17px;">${c._orderCount}</div><div class="label">Total Orders</div></div>
+        <div class="stat-card"><div class="value" style="font-size:17px;">${formatINR(c._totalSpent)}</div><div class="label">Total Spent</div></div>
+      </div>
+      <h4 style="font-size:13px;font-weight:700;margin-bottom:10px;">Recent Orders</h4>
+      ${c._orders.length ? c._orders.slice(0,4).map(o => `<div class="flex justify-between" style="padding:9px 0;border-bottom:1px solid var(--color-border);font-size:13px;"><span>#${o.id.slice(0,8).toUpperCase()}</span><span class="text-muted">${formatINR(o.total)}</span></div>`).join('') : '<p class="text-muted" style="font-size:13px;">No orders yet.</p>'}
+    `;
+    document.getElementById('custDrawer').classList.add('open');
+    document.getElementById('custDrawerOverlay').classList.add('open');
+  };
+  window.closeCustDrawer = function() { document.getElementById('custDrawer').classList.remove('open'); document.getElementById('custDrawerOverlay').classList.remove('open'); };
+
+  document.getElementById('cSearch').addEventListener('input', render);
+  render();
+})();
 </script>
 </body>
 </html>
