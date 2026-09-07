@@ -155,10 +155,10 @@
             <li><a href="/privacy-policy.html">Privacy Policy</a></li>
             <li><a href="/terms.html">Terms &amp; Conditions</a></li>
           </ul>
-          <ul class="footer-contact" style="margin-top:16px;">
-            <li>📞 +91 98765 43210</li>
-            <li>✉️ support@sanjaybaghouse.in</li>
-            <li>📍 14, MG Road, Pune, Maharashtra 411001</li>
+          <ul class="footer-contact" style="margin-top:16px;" id="footerContactInfo">
+            <li class="skeleton" style="height:14px;width:140px;margin-bottom:8px;"></li>
+            <li class="skeleton" style="height:14px;width:170px;margin-bottom:8px;"></li>
+            <li class="skeleton" style="height:14px;width:190px;"></li>
           </ul>
         </div>
       </div>
@@ -179,6 +179,21 @@
 
       document.getElementById("searchOverlayInput") && document.getElementById("searchOverlayInput").addEventListener("keydown", function (e) {
         if (e.key === "Enter" && this.value.trim()) window.location.href = "/search.html?q=" + encodeURIComponent(this.value.trim());
+      });
+
+      // Load real store contact info into the footer (replaces the skeleton placeholders)
+      import("/js/store-settings.js").then(async (mod) => {
+        const s = await mod.loadContactSettings();
+        const el = document.getElementById("footerContactInfo");
+        if (!el) return;
+        const rows = [];
+        if (s.phone) rows.push(`<li>📞 ${s.phone}</li>`);
+        if (s.email) rows.push(`<li>✉️ ${s.email}</li>`);
+        if (s.address) rows.push(`<li>📍 ${s.address}</li>`);
+        el.innerHTML = rows.length ? rows.join("") : `<li class="text-muted">Contact details coming soon</li>`;
+      }).catch(() => {
+        const el = document.getElementById("footerContactInfo");
+        if (el) el.innerHTML = "";
       });
     },
     openDrawer() { document.getElementById("mobileDrawer").classList.add("open"); document.getElementById("drawerOverlay").classList.add("open"); document.body.style.overflow = "hidden"; },
