@@ -28,20 +28,9 @@
 
       <div id="addresses">
         <h2 class="section-heading" style="font-size:19px;margin-bottom:14px;">Saved Addresses</h2>
-        <div class="card" style="padding:20px;margin-bottom:12px;">
-          <div class="flex justify-between">
-            <div>
-              <span class="badge badge-neutral" style="margin-bottom:8px;">Home</span>
-              <p class="body-text">Priya Sharma, 24 MG Road, Andheri West</p>
-              <p class="caption-text">Mumbai, Maharashtra 400001 · 98765 43210</p>
-            </div>
-            <div class="flex gap-8" style="align-self:flex-start;">
-              <button class="btn btn-ghost btn-sm" onclick="showToast('Address updated')">Edit</button>
-              <button class="btn btn-ghost btn-sm" onclick="showToast('Address removed')">Remove</button>
-            </div>
-          </div>
+        <div class="empty-state" style="padding:30px 20px;">
+          <p class="body-text" style="color:var(--color-muted);">No saved addresses yet. You'll enter your shipping address during checkout each time.</p>
         </div>
-        <button class="btn btn-secondary" onclick="showToast('Address form would open here')">+ Add New Address</button>
       </div>
     </div>
   </div>

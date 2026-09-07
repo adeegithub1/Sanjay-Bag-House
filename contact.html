@@ -29,17 +29,16 @@
       <div>
         <div class="card" style="padding:26px;margin-bottom:16px;">
           <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;">Get in Touch</h3>
-          <ul class="footer-contact" style="color:var(--color-text);">
-            <li>📞 +91 98765 43210</li>
-            <li>💬 WhatsApp: +91 98765 43210</li>
-            <li>✉️ support@sanjaybaghouse.in</li>
-            <li>📍 14, MG Road, Pune, Maharashtra 411001</li>
+          <ul class="footer-contact" style="color:var(--color-text);" id="contactPageInfo">
+            <li class="skeleton" style="height:14px;width:150px;margin-bottom:8px;"></li>
+            <li class="skeleton" style="height:14px;width:170px;margin-bottom:8px;"></li>
+            <li class="skeleton" style="height:14px;width:130px;margin-bottom:8px;"></li>
+            <li class="skeleton" style="height:14px;width:200px;"></li>
           </ul>
         </div>
         <div class="card" style="padding:26px;">
           <h3 style="font-size:15px;font-weight:700;margin-bottom:10px;">Business Hours</h3>
-          <p class="body-text" style="margin-bottom:4px;">Monday – Saturday: 10:00 AM – 8:00 PM</p>
-          <p class="body-text">Sunday: 11:00 AM – 6:00 PM</p>
+          <p class="body-text" id="contactPageHours">Loading...</p>
         </div>
       </div>
     </div>
@@ -50,5 +49,16 @@
 <script src="/js/store.js"></script>
 <script src="/js/components.js"></script>
 <script>SBHComponents.init('');</script>
+<script type="module">
+import { loadContactSettings } from "/js/store-settings.js";
+const s = await loadContactSettings();
+const rows = [];
+if (s.phone) rows.push(`<li>📞 ${s.phone}</li>`);
+if (s.whatsapp) rows.push(`<li>💬 WhatsApp: ${s.whatsapp}</li>`);
+if (s.email) rows.push(`<li>✉️ ${s.email}</li>`);
+if (s.address) rows.push(`<li>📍 ${s.address}</li>`);
+document.getElementById('contactPageInfo').innerHTML = rows.length ? rows.join('') : `<li class="text-muted">Contact details coming soon — check back shortly.</li>`;
+document.getElementById('contactPageHours').textContent = s.hours || 'Business hours coming soon.';
+</script>
 </body>
 </html>
