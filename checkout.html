@@ -46,6 +46,8 @@ if (!user) {
 const items = await window.SBHStore.cartDetailed();
 const profile = await SBHAuth.getCustomerProfile(user.uid);
 const data = window.SBH_DATA;
+let storedCoupon = null;
+try { storedCoupon = JSON.parse(localStorage.getItem('sbh_coupon')); } catch (e) {}
 
 if (!items.length) {
   document.getElementById('checkoutWrap').innerHTML = `
@@ -57,8 +59,9 @@ if (!items.length) {
     </div>`;
 } else {
   const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
+  const couponDiscount = storedCoupon ? storedCoupon.amount : 0;
   const shipping = subtotal > 999 ? 0 : 79;
-  const total = subtotal + shipping;
+  const total = subtotal - couponDiscount + shipping;
 
   document.getElementById('checkoutWrap').innerHTML = `
   <div class="cart-layout">
@@ -112,6 +115,7 @@ if (!items.length) {
         <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
         ${items.map(i => `<div class="summary-row"><span>${i.name} × ${i.qty}</span><span>${data.formatINR(i.lineTotal)}</span></div>`).join('')}
         <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
+        ${storedCoupon ? `<div class="summary-row"><span>Coupon (${storedCoupon.code})</span><span style="color:var(--color-success);">− ${data.formatINR(couponDiscount)}</span></div>` : ''}
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
         <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
         <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn">Place Order (COD)</button>
@@ -175,18 +179,35 @@ window.placeOrder = async function(e) {
       }
 
       const shipping = subtotal >= 999 ? 0 : 79;
-      const total = subtotal + shipping;
+      const discount = storedCoupon ? Math.min(storedCoupon.amount, subtotal) : 0;
+      const total = subtotal - discount + shipping;
 
       tx.set(orderRef, {
         userId: user.uid,
         items: orderItems,
         address,
         paymentMethod: "cod",
-        subtotal, shipping, total,
+        subtotal, shipping, discount,
+        couponCode: storedCoupon ? storedCoupon.code : null,
+        total,
         status: "pending",
         createdAt: serverTimestamp(),
       });
     });
+
+    // Best-effort: bump the coupon's usage counter (allowed by rules — signed-in
+    // users may only increase 'used' by exactly 1, nothing else on the coupon doc)
+    if (storedCoupon) {
+      try {
+        const { getDoc: getDocFn } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+        const couponRef = doc(db, "coupons", storedCoupon.code);
+        const couponSnap = await getDocFn(couponRef);
+        if (couponSnap.exists()) {
+          const { updateDoc: updateDocFn } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+          await updateDocFn(couponRef, { used: (couponSnap.data().used || 0) + 1 });
+        }
+      } catch (e) { /* non-critical */ }
+    }
 
     // Best-effort customer stats update (not critical if it fails)
     try {
@@ -197,6 +218,7 @@ window.placeOrder = async function(e) {
     } catch (e) { /* non-critical */ }
 
     window.SBHStore.clearCart();
+    localStorage.removeItem('sbh_coupon');
     window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderRef.id);
   } catch (err) {
     showToast(err.message || 'Could not place order. Please try again.', 'error');
