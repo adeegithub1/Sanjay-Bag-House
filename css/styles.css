@@ -4,6 +4,16 @@
    ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+/* Native browser cross-page transitions — smooth fade instead of a hard
+   white flash when navigating between pages. Purely a progressive
+   enhancement: browsers that don't support it (Firefox/Safari today)
+   just navigate normally, no fallback code needed. */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) { animation-duration: 0.22s; animation-timing-function: ease-out; }
+::view-transition-new(root) { animation-duration: 0.24s; animation-timing-function: ease-out; }
+
 :root {
   --color-primary: #16294D;
   --color-primary-dark: #0E1B34;
@@ -462,7 +472,70 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .accordion-content { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
 .accordion-content .inner { padding: 0 4px 18px; color: var(--color-muted); font-size: 13.5px; }
 
-/* Utility */
+/* ============================================================
+   ANIMATIONS & MICRO-INTERACTIONS
+   ============================================================ */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { 0% { transform: scale(0.85); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes heartPop { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
+@keyframes bounceOnce { 0%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } 55% { transform: translateY(0); } 75% { transform: translateY(-2px); } }
+@keyframes checkDraw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@keyframes shimmerSweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Scroll-reveal: elements fade+rise into place as they enter the viewport.
+     Applied via .reveal class + a tiny IntersectionObserver in components.js.
+     Respects reduced-motion — under that preference everything is visible immediately (see rule below). */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+
+  .product-card { animation: fadeInUp .4s ease backwards; }
+  .cat-card, .purpose-card { animation: fadeIn .5s ease backwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* Card & interactive hover polish */
+.product-card { transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease; }
+.product-card:hover { transform: translateY(-3px); }
+.cat-card, .purpose-card { transition: transform .25s ease; }
+.cat-rail-item img { transition: transform .2s ease, border-color .2s ease; }
+.cat-rail-item:hover img { transform: scale(1.08); border-color: var(--color-accent); }
+.btn { transition: all .15s ease, transform .1s ease; }
+.btn:active { transform: scale(0.97); }
+.icon-btn { transition: background .15s ease, transform .15s ease; }
+.icon-btn:active { transform: scale(0.9); }
+
+/* Wishlist heart pop */
+.product-wishlist-btn { transition: background .15s ease, color .15s ease; }
+.product-wishlist-btn.pop svg { animation: heartPop .4s ease; }
+
+/* Cart/wishlist header badge bounce when count changes */
+.icon-badge.bump { animation: bounceOnce .5s ease; }
+
+/* Add-to-cart button success state */
+.add-cart-btn.added { background: var(--color-success) !important; }
+
+/* Skeleton shimmer sweep (adds a moving highlight on top of the base pulse) */
+.skeleton { position: relative; overflow: hidden; }
+
+/* Accordion chevron + smoother open */
+.accordion-content { transition: max-height .3s ease; }
+
+/* Sticky header shadow once page is scrolled (toggled via JS class on <body>) */
+.site-header { transition: box-shadow .2s ease; }
+body.scrolled .site-header { box-shadow: 0 4px 14px rgba(14,27,52,0.18); }
+
+/* Toast entrance already animates; add exit polish */
+.toast { animation: popIn .3s ease; }
+
+/* Page content fade-in on load (helps the non-view-transition browsers too) */
+main { animation: fadeIn .35s ease; }
+
+
 .text-muted { color: var(--color-muted); }
 .flex { display: flex; }
 .items-center { align-items: center; }
@@ -475,3 +548,99 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* 404 */
 .error-page { text-align: center; padding: 90px 20px; }
 .error-page .code { font-family: var(--font-sans); font-size: 90px; font-weight: 800; color: var(--color-secondary); -webkit-text-stroke: 2px var(--color-primary); line-height: 1; }
+
+/* ============================================================
+   ANIMATIONS & MOTION SYSTEM
+   ============================================================ */
+
+/* Native cross-page view transitions — smooth cross-fade instead of a hard
+   white flash when navigating between pages. Zero JS needed; supported in
+   Chrome/Edge, gracefully ignored elsewhere (plain instant navigation). */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) {
+  animation: sbh-fade-out 0.18s ease-out both;
+}
+::view-transition-new(root) {
+  animation: sbh-fade-in-scale 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes sbh-fade-out { to { opacity: 0; } }
+@keyframes sbh-fade-in-scale { from { opacity: 0; transform: scale(0.985) translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+/* Scroll-reveal — applied automatically by components.js to common content
+   blocks (cards, sections) without needing new classes in every page. */
+.sbh-reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.sbh-reveal.sbh-revealed { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sbh-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* Card hover polish — lift + shadow instead of flat scale-only */
+.product-card, .cat-card, .purpose-card, .review-card.card {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.product-card:hover { transform: translateY(-4px); }
+.cat-card:hover, .purpose-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+/* Button micro-interaction — subtle press feedback */
+.btn, .add-cart-btn, .icon-btn, .page-btn {
+  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:active, .add-cart-btn:active { transform: scale(0.97); }
+.icon-btn:active { transform: scale(0.9); }
+
+/* Cart / wishlist icon badge bump when count changes */
+@keyframes sbh-badge-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  60% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.icon-badge.sbh-bump { animation: sbh-badge-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Wishlist heart pop */
+@keyframes sbh-heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35) rotate(-6deg); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.product-wishlist-btn.sbh-pop, .btn-icon.sbh-pop { animation: sbh-heart-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Add-to-cart success flash on the button itself */
+@keyframes sbh-btn-flash {
+  0% { background-color: var(--color-accent); }
+  40% { background-color: var(--color-success); }
+  100% { background-color: var(--color-accent); }
+}
+.add-cart-btn.sbh-added { animation: sbh-btn-flash 0.6s ease; }
+
+/* Discount badge — gentle attention pulse on card hover only (not constant, avoids being annoying) */
+.product-card:hover .product-badge.badge-accent { animation: sbh-badge-pulse 0.9s ease infinite; }
+@keyframes sbh-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,56,74,0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(240,56,74,0); }
+}
+
+/* Image zoom-in on hover (product media, category cards, hero image) */
+.hero-image img { transition: transform 0.4s ease; }
+.hero-image:hover img { transform: scale(1.03); }
+
+/* Fade-in for the whole page content on first load (subtle, not jarring) */
+@keyframes sbh-page-in { from { opacity: 0; } to { opacity: 1; } }
+main { animation: sbh-page-in 0.35s ease both; }
+@media (prefers-reduced-motion: reduce) { main { animation: none; } }
+
+/* Skeleton shimmer already exists via .skeleton — reused for card-shaped loaders */
+.skeleton-card { border-radius: var(--radius-md); aspect-ratio: 1/1; }
+
+/* Loading dots (for buttons mid-action, optional use) */
+@keyframes sbh-dot-bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+.sbh-loading-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin: 0 1.5px; animation: sbh-dot-bounce 1s infinite ease-in-out; }
+.sbh-loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.sbh-loading-dots span:nth-child(3) { animation-delay: 0.3s; }
