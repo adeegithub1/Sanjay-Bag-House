@@ -195,6 +195,52 @@
         const el = document.getElementById("footerContactInfo");
         if (el) el.innerHTML = "";
       });
+
+      SBHComponents.initScrollReveal();
+    },
+
+    /**
+     * Automatically fades/lifts common content blocks into view as the user
+     * scrolls. Uses a MutationObserver so it also catches product grids and
+     * other content that individual pages render asynchronously AFTER
+     * init() runs (e.g. once Firestore data loads) — no page needs to call
+     * this again manually.
+     */
+    initScrollReveal() {
+      if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const selector = ".product-card, .cat-card, .purpose-card, .promo-banner, .why-item, .review-card, .card, .empty-state";
+
+      if (!SBHComponents._revealObserver) {
+        SBHComponents._revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("sbh-revealed");
+              SBHComponents._revealObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
+      }
+
+      const observeNew = (root) => {
+        const els = root.matches && root.matches(selector) ? [root] : Array.from(root.querySelectorAll ? root.querySelectorAll(selector) : []);
+        els.forEach((el, i) => {
+          if (el.classList.contains("sbh-reveal") || el.classList.contains("sbh-revealed")) return;
+          el.classList.add("sbh-reveal");
+          el.style.transitionDelay = Math.min(i % 8, 8) * 45 + "ms";
+          SBHComponents._revealObserver.observe(el);
+        });
+      };
+
+      observeNew(document.body);
+
+      if (!SBHComponents._mutationObserver) {
+        SBHComponents._mutationObserver = new MutationObserver((mutations) => {
+          mutations.forEach((m) => m.addedNodes.forEach((node) => {
+            if (node.nodeType === 1) observeNew(node);
+          }));
+        });
+        SBHComponents._mutationObserver.observe(document.body, { childList: true, subtree: true });
+      }
     },
     openDrawer() { document.getElementById("mobileDrawer").classList.add("open"); document.getElementById("drawerOverlay").classList.add("open"); document.body.style.overflow = "hidden"; },
     closeDrawer() { document.getElementById("mobileDrawer").classList.remove("open"); document.getElementById("drawerOverlay").classList.remove("open"); document.body.style.overflow = ""; },
