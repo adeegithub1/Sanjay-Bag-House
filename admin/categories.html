@@ -47,41 +47,95 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script>
-AdminShell.init('categories', 'Categories');
-const data = window.SBH_DATA;
-let cats = data.CATEGORIES.map((c,i) => ({...c, active: true, sort: i+1}));
+<script type="module">
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-function render() {
-  document.getElementById('catBody').innerHTML = cats.map(c => `
-    <tr>
-      <td><img src="${c.image}" alt="${c.name}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;" /></td>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.count} products</td>
-      <td><span class="badge badge-${c.active ? 'success' : 'neutral'}">${c.active ? 'Active' : 'Disabled'}</span></td>
-      <td>${c.sort}</td>
-      <td>
-        <div class="row-actions">
-          <button aria-label="Edit" onclick="showToast('Category updated','success')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg></button>
-          <button aria-label="Toggle status" onclick="toggleCat('${c.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></button>
-          <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteCat('${c.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
-        </div>
-      </td>
-    </tr>`).join('');
-}
-window.toggleCat = function(id) { const c = cats.find(x=>x.id===id); c.active = !c.active; showToast('Category status updated','success'); render(); };
-window.deleteCat = function(id) { showConfirmDialog('Delete this category? Products inside it will remain uncategorized.', () => { cats = cats.filter(c=>c.id!==id); showToast('Category deleted','success'); render(); }); };
-window.openCatModal = function() { document.getElementById('catModal').classList.add('open'); };
-window.closeCatModal = function() { document.getElementById('catModal').classList.remove('open'); };
-window.saveCategory = function() {
-  const name = document.getElementById('catNameInput').value.trim();
-  if (!name) { showToast('Please enter a category name','error'); return; }
-  cats.push({ id: 'cat-'+Date.now(), name, image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop', count: 0, active: document.getElementById('catActiveInput').checked, sort: Number(document.getElementById('catSortInput').value) });
-  closeCatModal();
-  showToast('Category added successfully','success');
+(async () => {
+  AdminShell.init('categories', 'Categories');
+
+  const [catSnap, prodSnap] = await Promise.all([
+    getDocs(collection(db, "categories")),
+    getDocs(collection(db, "products")),
+  ]);
+  const products = prodSnap.docs.map(d => d.data());
+  let cats = catSnap.docs.map((d,i) => ({ id: d.id, ...d.data() }));
+  let editingId = null;
+
+  function productCount(catId) { return products.filter(p => p.category === catId).length; }
+
+  function render() {
+    document.getElementById('catBody').innerHTML = cats.map(c => `
+      <tr>
+        <td><img src="${c.image || 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop'}" alt="${c.name}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;" /></td>
+        <td><strong>${c.name}</strong></td>
+        <td>${productCount(c.id)} products</td>
+        <td><span class="badge badge-${c.active !== false ? 'success' : 'neutral'}">${c.active !== false ? 'Active' : 'Disabled'}</span></td>
+        <td>${c.sort || 1}</td>
+        <td>
+          <div class="row-actions">
+            <button aria-label="Edit" onclick="openCatModal('${c.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg></button>
+            <button aria-label="Toggle status" onclick="toggleCat('${c.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></button>
+            <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteCat('${c.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  window.toggleCat = async function(id) {
+    const c = cats.find(x=>x.id===id);
+    try {
+      await updateDoc(doc(db, "categories", id), { active: !(c.active !== false) });
+      c.active = !(c.active !== false);
+      showToast('Category status updated', 'success');
+      render();
+    } catch (err) { showToast('Could not update category.', 'error'); }
+  };
+  window.deleteCat = function(id) {
+    showConfirmDialog('Delete this category? Products inside it will remain uncategorized.', async () => {
+      try {
+        await deleteDoc(doc(db, "categories", id));
+        cats = cats.filter(c=>c.id!==id);
+        showToast('Category deleted', 'success');
+        render();
+      } catch (err) { showToast('Could not delete category.', 'error'); }
+    });
+  };
+  window.openCatModal = function(id) {
+    editingId = id || null;
+    const c = id ? cats.find(x=>x.id===id) : null;
+    document.getElementById('catModalTitle').textContent = id ? 'Edit Category' : 'Add Category';
+    document.getElementById('catNameInput').value = c ? c.name : '';
+    document.getElementById('catSortInput').value = c ? (c.sort||1) : (cats.length+1);
+    document.getElementById('catActiveInput').checked = c ? c.active !== false : true;
+    document.getElementById('catModal').classList.add('open');
+  };
+  window.closeCatModal = function() { document.getElementById('catModal').classList.remove('open'); };
+  window.saveCategory = async function() {
+    const name = document.getElementById('catNameInput').value.trim();
+    if (!name) { showToast('Please enter a category name', 'error'); return; }
+    const payload = {
+      name,
+      sort: Number(document.getElementById('catSortInput').value) || 1,
+      active: document.getElementById('catActiveInput').checked,
+    };
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, "categories", editingId), payload);
+        Object.assign(cats.find(c=>c.id===editingId), payload);
+        showToast('Category updated successfully', 'success');
+      } else {
+        payload.image = 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop';
+        const ref = await addDoc(collection(db, "categories"), payload);
+        cats.push({ id: ref.id, ...payload });
+        showToast('Category added successfully', 'success');
+      }
+      closeCatModal();
+      render();
+    } catch (err) { showToast('Could not save category.', 'error'); }
+  };
   render();
-};
-render();
+})();
 </script>
 </body>
 </html>
