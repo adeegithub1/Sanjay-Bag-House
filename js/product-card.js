@@ -42,11 +42,14 @@
     const btn = e.currentTarget;
     btn.classList.toggle("active", added);
     btn.querySelector("svg").setAttribute("fill", added ? "currentColor" : "none");
+    btn.classList.remove("sbh-pop"); void btn.offsetWidth; btn.classList.add("sbh-pop");
   };
 
   window.handleAddToCartClick = function (e, productId) {
     e.preventDefault(); e.stopPropagation();
     window.SBHStore.addToCart(productId, 1);
     showToast("Product added to cart", "success");
+    const btn = e.currentTarget;
+    btn.classList.remove("sbh-added"); void btn.offsetWidth; btn.classList.add("sbh-added");
   };
 })();
