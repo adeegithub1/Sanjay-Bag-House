@@ -85,11 +85,15 @@
   window.updateBadges = function () {
     document.querySelectorAll("[data-cart-count]").forEach(el => {
       const n = Store.cartCount();
+      const changed = el.textContent !== String(n);
       el.textContent = n; el.style.display = n > 0 ? "flex" : "none";
+      if (changed && n > 0) { el.classList.remove("sbh-bump"); void el.offsetWidth; el.classList.add("sbh-bump"); }
     });
     document.querySelectorAll("[data-wishlist-count]").forEach(el => {
       const n = Store.wishlistCount();
+      const changed = el.textContent !== String(n);
       el.textContent = n; el.style.display = n > 0 ? "flex" : "none";
+      if (changed && n > 0) { el.classList.remove("sbh-bump"); void el.offsetWidth; el.classList.add("sbh-bump"); }
     });
   };
   document.addEventListener("sbh:cart-updated", window.updateBadges);
