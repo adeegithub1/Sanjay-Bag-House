@@ -16,13 +16,13 @@
   <div class="admin-main">
     <div id="admin-topbar"></div>
     <div class="admin-content">
-      <div class="admin-page-head"><div><h1>Shipping Settings</h1><p>Configure delivery charges, COD and courier preferences.</p></div></div>
+      <div class="admin-page-head"><div><h1>Shipping Settings</h1><p>Configure delivery charges, COD and courier preferences. These apply for real at checkout.</p></div></div>
 
       <div class="form-section">
         <h3>Shipping Charges</h3>
         <div class="form-row form-row-2">
-          <div class="form-group"><label class="form-label">Standard Shipping Charge (₹)</label><input type="number" class="form-input" value="79" /></div>
-          <div class="form-group"><label class="form-label">Free Shipping Threshold (₹)</label><input type="number" class="form-input" value="999" /></div>
+          <div class="form-group"><label class="form-label">Standard Shipping Charge (₹)</label><input id="sh_charge" type="number" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Free Shipping Threshold (₹)</label><input id="sh_threshold" type="number" class="form-input" /></div>
         </div>
       </div>
 
@@ -30,25 +30,25 @@
         <h3>Cash on Delivery (COD)</h3>
         <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);margin-bottom:14px;">
           <span class="body-text">Enable Cash on Delivery</span>
-          <label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+          <label class="toggle"><input id="sh_codEnabled" type="checkbox" /><span class="toggle-slider"></span></label>
         </div>
         <div class="form-row form-row-3">
-          <div class="form-group"><label class="form-label">COD Fee (₹)</label><input type="number" class="form-input" value="30" /></div>
-          <div class="form-group"><label class="form-label">Minimum Order for COD (₹)</label><input type="number" class="form-input" value="200" /></div>
-          <div class="form-group"><label class="form-label">Maximum COD Order (₹)</label><input type="number" class="form-input" value="10000" /></div>
+          <div class="form-group"><label class="form-label">COD Fee (₹)</label><input id="sh_codFee" type="number" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Minimum Order for COD (₹)</label><input id="sh_codMin" type="number" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Maximum COD Order (₹)</label><input id="sh_codMax" type="number" class="form-input" placeholder="0 = no limit" /></div>
         </div>
       </div>
 
       <div class="form-section">
         <h3>Courier Settings</h3>
-        <p class="desc">Used to generate tracking links for customer order updates.</p>
+        <p class="desc">Used to generate tracking links for customer order updates. (Tracking ID entry per order isn't built yet — this just stores the format for later.)</p>
         <div class="form-row form-row-2">
-          <div class="form-group"><label class="form-label">Courier Name</label><input class="form-input" placeholder="e.g. Delhivery, Blue Dart, DTDC" /></div>
-          <div class="form-group"><label class="form-label">Tracking URL Format</label><input class="form-input" placeholder="https://courier.com/track/{tracking_id}" /></div>
+          <div class="form-group"><label class="form-label">Courier Name</label><input id="sh_courier" class="form-input" placeholder="e.g. Delhivery, Blue Dart, DTDC" /></div>
+          <div class="form-group"><label class="form-label">Tracking URL Format</label><input id="sh_trackingUrl" class="form-input" placeholder="https://courier.com/track/{tracking_id}" /></div>
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="showToast('Shipping settings saved successfully','success')">Save Changes</button>
+      <button class="btn btn-primary" id="saveShippingBtn">Save Changes</button>
     </div>
   </div>
 </div>
@@ -56,6 +56,42 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script>AdminShell.init('shipping', 'Shipping Settings');</script>
+<script type="module" src="/js/store-settings.js"></script>
+<script type="module">
+(async () => {
+  AdminShell.init('shipping', 'Shipping Settings');
+
+  const s = await window.SBHStoreSettings.loadShippingSettings();
+  document.getElementById('sh_charge').value = s.standardCharge;
+  document.getElementById('sh_threshold').value = s.freeThreshold;
+  document.getElementById('sh_codEnabled').checked = s.codEnabled;
+  document.getElementById('sh_codFee').value = s.codFee;
+  document.getElementById('sh_codMin').value = s.codMinOrder;
+  document.getElementById('sh_codMax').value = s.codMaxOrder;
+  document.getElementById('sh_courier').value = s.courierName;
+  document.getElementById('sh_trackingUrl').value = s.trackingUrlFormat;
+
+  document.getElementById('saveShippingBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveShippingBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveShippingSettings({
+        standardCharge: Number(document.getElementById('sh_charge').value) || 0,
+        freeThreshold: Number(document.getElementById('sh_threshold').value) || 0,
+        codEnabled: document.getElementById('sh_codEnabled').checked,
+        codFee: Number(document.getElementById('sh_codFee').value) || 0,
+        codMinOrder: Number(document.getElementById('sh_codMin').value) || 0,
+        codMaxOrder: Number(document.getElementById('sh_codMax').value) || 0,
+        courierName: document.getElementById('sh_courier').value.trim(),
+        trackingUrlFormat: document.getElementById('sh_trackingUrl').value.trim(),
+      });
+      showToast('Shipping settings saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  });
+})();
+</script>
 </body>
 </html>
