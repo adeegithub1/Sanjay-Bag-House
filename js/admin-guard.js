@@ -17,6 +17,15 @@
 
 import SBHAuth from "/js/auth.js";
 
+// If this page is being restored from the browser's back/forward cache
+// (e.g. user clicked Back after logging out), force a full reload so the
+// auth check below actually re-runs instead of showing a stale cached page.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
 (async function guard() {
   const user = await SBHAuth.getCurrentUser();
 
