@@ -19,7 +19,7 @@
 
   <div class="shop-layout">
     <!-- Desktop sidebar filters -->
-    <aside id="filterSidebarDesktop" style="display:none;">
+    <aside id="filterSidebarDesktop" class="shop-filter-sidebar">
       <div id="filterContent"></div>
     </aside>
 
@@ -160,7 +160,6 @@ function render() {
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
   document.getElementById('shopGrid').innerHTML = pageItems.map(p => renderProductCard(p)).join('');
   document.getElementById('shopEmpty').classList.toggle('hidden', filtered.length > 0);
-  document.getElementById('filterSidebarDesktop').style.display = 'block';
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   let pagHtml = '';
