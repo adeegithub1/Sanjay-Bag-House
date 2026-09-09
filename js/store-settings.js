@@ -26,5 +26,24 @@ async function saveContactSettings(data) {
   _cache = { ...DEFAULTS, ...data };
 }
 
-window.SBHStoreSettings = { loadContactSettings, saveContactSettings };
-export { loadContactSettings, saveContactSettings };
+const BRANDING_DEFAULTS = { logoUrl: "", faviconUrl: "" };
+let _brandingCache = null;
+
+async function loadBrandingSettings() {
+  if (_brandingCache) return _brandingCache;
+  try {
+    const snap = await getDoc(doc(db, "storeSettings", "branding"));
+    _brandingCache = snap.exists() ? { ...BRANDING_DEFAULTS, ...snap.data() } : { ...BRANDING_DEFAULTS };
+  } catch (e) {
+    _brandingCache = { ...BRANDING_DEFAULTS };
+  }
+  return _brandingCache;
+}
+
+async function saveBrandingSettings(data) {
+  await setDoc(doc(db, "storeSettings", "branding"), { ...data, updatedAt: serverTimestamp() });
+  _brandingCache = { ...BRANDING_DEFAULTS, ...data };
+}
+
+window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings };
+export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings };
