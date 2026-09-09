@@ -121,10 +121,10 @@
         <div class="footer-brand">
           <a href="/index.html" class="logo" style="color:#fff;">Sanjay Bag House</a>
           <p>Premium bags and luggage, crafted for everyday life, work and travel. Trusted by thousands of customers across India.</p>
-          <div class="footer-social">
-            <a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
-            <a href="#" aria-label="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
-            <a href="#" aria-label="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 8.5s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C16.3 5 12 5 12 5s-4.3 0-7.1.2c-.4 0-1.3.1-2.1 1C2.2 6.9 2 8.5 2 8.5S1.8 10.4 1.8 12.3v1.4C1.8 15.6 2 17.5 2 17.5s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.3.2 7.3.2s4.3 0 7.1-.3c.4 0 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4c0-1.9-.2-3.8-.2-3.8Z"/><path d="m10 15 5-3-5-3z"/></svg></a>
+          <div class="footer-social" id="footerSocialLinks">
+            <a href="#" aria-label="Instagram" class="fs-instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+            <a href="#" aria-label="Facebook" class="fs-facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+            <a href="#" aria-label="YouTube" class="fs-youtube"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 8.5s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C16.3 5 12 5 12 5s-4.3 0-7.1.2c-.4 0-1.3.1-2.1 1C2.2 6.9 2 8.5 2 8.5S1.8 10.4 1.8 12.3v1.4C1.8 15.6 2 17.5 2 17.5s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.3.2 7.3.2s4.3 0 7.1-.3c.4 0 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4c0-1.9-.2-3.8-.2-3.8Z"/><path d="m10 15 5-3-5-3z"/></svg></a>
           </div>
         </div>
         <div class="footer-col">
@@ -214,6 +214,18 @@
           if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
           link.href = b.faviconUrl;
         }
+      }).catch(() => {});
+
+      // Apply real social media links (hides any icon that has no URL set, rather than leaving a dead link)
+      import("/js/store-settings.js").then(async (mod) => {
+        const s = await mod.loadSocialSettings();
+        const map = { instagram: "fs-instagram", facebook: "fs-facebook", youtube: "fs-youtube" };
+        Object.entries(map).forEach(([key, cls]) => {
+          const link = document.querySelector("." + cls);
+          if (!link) return;
+          if (s[key]) { link.href = s[key]; link.target = "_blank"; link.rel = "noopener"; }
+          else { link.style.display = "none"; }
+        });
       }).catch(() => {});
 
       SBHComponents.initScrollReveal();
