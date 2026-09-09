@@ -29,39 +29,37 @@
         </div>
         <div class="admin-panel-body">
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Heading</label><input class="form-input" value="Carry What Matters." /></div>
-            <div class="form-group"><label class="form-label">Subheading</label><input class="form-input" value="Stylish, durable and reliable bags designed for everyday life, work and travel." /></div>
+            <div class="form-group"><label class="form-label">Eyebrow Text</label><input id="hero_eyebrow" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Heading</label><input id="hero_heading" class="form-input" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">Subheading</label><input id="hero_subheading" class="form-input" /></div>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Primary Button Text</label><input id="hero_primaryText" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Primary Button URL</label><input id="hero_primaryUrl" class="form-input" /></div>
           </div>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Primary Button Text</label><input class="form-input" value="Shop Collection" /></div>
-            <div class="form-group"><label class="form-label">Primary Button URL</label><input class="form-input" value="/shop.html" /></div>
+            <div class="form-group"><label class="form-label">Secondary Button Text</label><input id="hero_secondaryText" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Secondary Button URL</label><input id="hero_secondaryUrl" class="form-input" /></div>
           </div>
-          <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Secondary Button Text</label><input class="form-input" value="Explore Bags" /></div>
-            <div class="form-group"><label class="form-label">Secondary Button URL</label><input class="form-input" value="/category.html?slug=travel-bags" /></div>
-          </div>
-          <div class="form-group"><label class="form-label">Hero Image</label>
-            <div class="image-uploader" style="grid-template-columns:repeat(2,120px);">
-              <div class="uploader-slot"><img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop" alt="Hero"/></div>
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="showToast('Hero section saved successfully','success')">Save Section</button>
+          <div class="form-group"><label class="form-label">Hero Image URL</label><input id="hero_imageUrl" class="form-input" placeholder="https://..." /></div>
+          <button class="btn btn-primary btn-sm" id="saveHeroBtn">Save Section</button>
         </div>
       </div>
 
       <!-- Promo Banner -->
       <div class="admin-panel">
-        <div class="admin-panel-head"><h3>Promotional Banner</h3><label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label></div>
+        <div class="admin-panel-head"><h3>Promotional Banner</h3></div>
         <div class="admin-panel-body">
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Heading</label><input class="form-input" value="Travel Better. Carry Smarter." /></div>
-            <div class="form-group"><label class="form-label">Description</label><input class="form-input" value="Explore our collection of travel-ready bags." /></div>
+            <div class="form-group"><label class="form-label">Heading</label><input id="promo_heading" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Description</label><input id="promo_text" class="form-input" /></div>
           </div>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Button Text</label><input class="form-input" value="Shop Travel Bags" /></div>
-            <div class="form-group"><label class="form-label">Button URL</label><input class="form-input" value="/category.html?slug=travel-bags" /></div>
+            <div class="form-group"><label class="form-label">Button Text</label><input id="promo_btnText" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Button URL</label><input id="promo_btnUrl" class="form-input" /></div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="showToast('Promotional banner saved successfully','success')">Save Section</button>
+          <div class="form-group"><label class="form-label">Banner Image URL</label><input id="promo_imageUrl" class="form-input" placeholder="https://..." /></div>
+          <button class="btn btn-primary btn-sm" id="savePromoBtn">Save Section</button>
         </div>
       </div>
 
@@ -128,6 +126,65 @@ import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "https://www
 
   const homeSettingsSnap = await getDoc(doc(db, "storeSettings", "homepage"));
   const homeSettings = homeSettingsSnap.exists() ? homeSettingsSnap.data() : {};
+
+  // ---- Hero ----
+  const heroDefaults = { eyebrow: 'New Season Collection', heading: 'Carry What Matters.', subheading: 'Stylish, durable and reliable bags designed for everyday life, work and travel.', primaryBtnText: 'Shop Collection', primaryBtnUrl: '/shop.html', secondaryBtnText: 'Explore Bags', secondaryBtnUrl: '/category.html?slug=travel-bags', imageUrl: '' };
+  const hero = { ...heroDefaults, ...(homeSettings.hero || {}) };
+  document.getElementById('hero_eyebrow').value = hero.eyebrow;
+  document.getElementById('hero_heading').value = hero.heading;
+  document.getElementById('hero_subheading').value = hero.subheading;
+  document.getElementById('hero_primaryText').value = hero.primaryBtnText;
+  document.getElementById('hero_primaryUrl').value = hero.primaryBtnUrl;
+  document.getElementById('hero_secondaryText').value = hero.secondaryBtnText;
+  document.getElementById('hero_secondaryUrl').value = hero.secondaryBtnUrl;
+  document.getElementById('hero_imageUrl').value = hero.imageUrl;
+  document.getElementById('saveHeroBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveHeroBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const payload = {
+        eyebrow: document.getElementById('hero_eyebrow').value.trim(),
+        heading: document.getElementById('hero_heading').value.trim(),
+        subheading: document.getElementById('hero_subheading').value.trim(),
+        primaryBtnText: document.getElementById('hero_primaryText').value.trim(),
+        primaryBtnUrl: document.getElementById('hero_primaryUrl').value.trim(),
+        secondaryBtnText: document.getElementById('hero_secondaryText').value.trim(),
+        secondaryBtnUrl: document.getElementById('hero_secondaryUrl').value.trim(),
+        imageUrl: document.getElementById('hero_imageUrl').value.trim(),
+      };
+      await setDoc(doc(db, "storeSettings", "homepage"), { ...homeSettings, hero: payload }, { merge: true });
+      homeSettings.hero = payload;
+      showToast('Hero section saved successfully', 'success');
+    } catch (err) { showToast('Could not save. Please try again.', 'error'); }
+    btn.disabled = false; btn.textContent = 'Save Section';
+  });
+
+  // ---- Promo Banner ----
+  const promoDefaults = { heading: 'Travel Better. Carry Smarter.', text: 'Explore our collection of travel-ready bags built for every journey.', btnText: 'Shop Travel Bags', btnUrl: '/category.html?slug=travel-bags', imageUrl: '' };
+  const promo = { ...promoDefaults, ...(homeSettings.promo || {}) };
+  document.getElementById('promo_heading').value = promo.heading;
+  document.getElementById('promo_text').value = promo.text;
+  document.getElementById('promo_btnText').value = promo.btnText;
+  document.getElementById('promo_btnUrl').value = promo.btnUrl;
+  document.getElementById('promo_imageUrl').value = promo.imageUrl;
+  document.getElementById('savePromoBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('savePromoBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const payload = {
+        heading: document.getElementById('promo_heading').value.trim(),
+        text: document.getElementById('promo_text').value.trim(),
+        btnText: document.getElementById('promo_btnText').value.trim(),
+        btnUrl: document.getElementById('promo_btnUrl').value.trim(),
+        imageUrl: document.getElementById('promo_imageUrl').value.trim(),
+      };
+      await setDoc(doc(db, "storeSettings", "homepage"), { ...homeSettings, promo: payload }, { merge: true });
+      homeSettings.promo = payload;
+      showToast('Promotional banner saved successfully', 'success');
+    } catch (err) { showToast('Could not save. Please try again.', 'error'); }
+    btn.disabled = false; btn.textContent = 'Save Section';
+  });
+
   let featuredCatIds = homeSettings.featuredCategoryIds || categories.slice(0,6).map(c=>c.id);
 
   document.getElementById('featCatBody').innerHTML = `
