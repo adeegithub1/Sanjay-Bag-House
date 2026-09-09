@@ -87,5 +87,24 @@ async function saveShippingSettings(data) {
   _shippingCache = { ...SHIPPING_DEFAULTS, ...data };
 }
 
-window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings };
-export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings };
+const BUSINESS_DEFAULTS = { gstin: "", returnPeriod: "", shippingInfo: "" };
+let _businessCache = null;
+
+async function loadBusinessSettings() {
+  if (_businessCache) return _businessCache;
+  try {
+    const snap = await getDoc(doc(db, "storeSettings", "business"));
+    _businessCache = snap.exists() ? { ...BUSINESS_DEFAULTS, ...snap.data() } : { ...BUSINESS_DEFAULTS };
+  } catch (e) {
+    _businessCache = { ...BUSINESS_DEFAULTS };
+  }
+  return _businessCache;
+}
+
+async function saveBusinessSettings(data) {
+  await setDoc(doc(db, "storeSettings", "business"), { ...data, updatedAt: serverTimestamp() });
+  _businessCache = { ...BUSINESS_DEFAULTS, ...data };
+}
+
+window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings };
+export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings };
