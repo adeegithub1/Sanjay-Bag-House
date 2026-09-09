@@ -30,6 +30,8 @@ import SBHAuth from "/js/auth.js";
 
 SBHComponents.init('shop');
 const data = window.SBH_DATA;
+const { loadShippingSettings } = await import("/js/store-settings.js");
+const shippingSettings = await loadShippingSettings();
 
 function getStoredCoupon() {
   try { return JSON.parse(localStorage.getItem('sbh_coupon')); } catch (e) { return null; }
@@ -57,7 +59,7 @@ async function render() {
   const mrpTotal = items.reduce((s,i) => s + i.mrp * i.qty, 0);
   const couponAmount = appliedCoupon ? appliedCoupon.amount : 0;
   const discount = (mrpTotal - subtotal) + couponAmount;
-  const shipping = subtotal > 999 ? 0 : 79;
+  const shipping = subtotal > shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
   const total = subtotal - couponAmount + shipping;
 
   wrap.innerHTML = `
