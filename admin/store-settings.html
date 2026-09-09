@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Store Settings | Sanjay Bag House Admin</title>
+<title>Settings | Sanjay Bag House Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css" />
 <link rel="stylesheet" href="/css/admin.css" />
@@ -16,90 +16,73 @@
   <div class="admin-main">
     <div id="admin-topbar"></div>
     <div class="admin-content">
-      <div class="admin-page-head"><div><h1>Store Settings</h1><p>Manage your store's branding, contact details and business information.</p></div></div>
+      <div class="admin-page-head"><div><h1>Settings</h1><p>Manage your admin account and preferences.</p></div></div>
 
-      <div class="settings-tabs" id="storeTabs">
-        <button class="settings-tab active" data-t="branding">Branding</button>
-        <button class="settings-tab" data-t="contact">Contact</button>
-        <button class="settings-tab" data-t="social">Social Media</button>
-        <button class="settings-tab" data-t="business">Business</button>
+      <div class="settings-tabs" id="setTabs">
+        <button class="settings-tab active" data-t="profile">Profile</button>
+        <button class="settings-tab" data-t="general">General</button>
+        <button class="settings-tab" data-t="notifications">Notifications</button>
+        <button class="settings-tab" data-t="security">Security</button>
       </div>
 
-      <div id="storePanelBranding">
+      <div id="panelProfile">
         <div class="form-section">
-          <h3>Logo &amp; Favicon</h3>
-          <p class="desc">Your logo appears in the header, emails and invoices.</p>
+          <h3>Admin Profile</h3>
+          <div class="flex items-center gap-8" style="margin-bottom:20px;">
+            <img id="adminAvatarImg" src="" alt="" class="admin-avatar" style="width:64px;height:64px;object-fit:cover;display:none;" />
+            <div id="adminAvatarFallback" class="admin-avatar" style="width:64px;height:64px;font-size:22px;background:var(--color-accent);">?</div>
+            <div style="flex:1;"><label class="form-label">Photo URL</label><input id="set_photoUrl" class="form-input" placeholder="https://... (paste an image URL)" /></div>
+          </div>
           <div class="form-row form-row-2">
-            <div>
-              <label class="form-label">Store Logo</label>
-              <div style="border:1.5px dashed var(--color-border);border-radius:8px;padding:20px;text-align:center;margin-bottom:10px;">
-                <div class="logo" style="justify-content:center;display:flex;flex-direction:column;align-items:center;">Sanjay Bag House<small>Carry What Matters</small></div>
-              </div>
-              <div class="flex gap-8"><button class="btn btn-secondary btn-sm" onclick="showToast('Logo upload is simulated in this prototype')">Upload New Logo</button><button class="btn btn-ghost btn-sm" onclick="showToast('Logo removed')">Remove Logo</button></div>
-            </div>
-            <div>
-              <label class="form-label">Favicon</label>
-              <div style="border:1.5px dashed var(--color-border);border-radius:8px;padding:20px;text-align:center;margin-bottom:10px;">
-                <div style="width:32px;height:32px;background:var(--color-primary);border-radius:6px;margin:0 auto;"></div>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="showToast('Favicon upload is simulated in this prototype')">Upload Favicon</button>
-            </div>
+            <div class="form-group"><label class="form-label">Full Name</label><input id="set_name" class="form-input" /></div>
+            <div class="form-group"><label class="form-label">Role</label><input class="form-input" value="Store Owner" disabled /></div>
           </div>
+          <div class="form-group"><label class="form-label">Email Address</label><input id="set_email" class="form-input" disabled /></div>
+          <button class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
         </div>
         <div class="form-section">
-          <h3>Store Identity</h3>
+          <h3>Change Password</h3>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Store Name</label><input class="form-input" value="Sanjay Bag House" /></div>
-            <div class="form-group"><label class="form-label">Tagline</label><input class="form-input" value="Carry What Matters." /></div>
+            <div class="form-group"><label class="form-label">Current Password</label><input type="password" id="set_curPass" class="form-input" placeholder="Enter current password" /></div>
+            <div class="form-group"><label class="form-label">New Password</label><input type="password" id="set_newPass" class="form-input" placeholder="Enter new password (min. 6 characters)" /></div>
           </div>
+          <button class="btn btn-secondary" id="savePassBtn">Update Password</button>
         </div>
         <div class="form-section">
-          <h3>Brand Colors</h3>
-          <div class="form-row form-row-3">
-            <div class="form-group"><label class="form-label">Primary</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#171717" /><input class="form-input" value="#171717" /></div></div>
-            <div class="form-group"><label class="form-label">Secondary</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#F5EFE6" /><input class="form-input" value="#F5EFE6" /></div></div>
-            <div class="form-group"><label class="form-label">Accent</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#8A5A3B" /><input class="form-input" value="#8A5A3B" /></div></div>
-          </div>
+          <h3>Logout</h3>
+          <p class="desc">Sign out of the admin dashboard on this device.</p>
+          <button class="btn btn-danger" id="logoutBtn">Logout</button>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
       </div>
 
-      <div id="storePanelContact" class="hidden">
+      <div id="panelGeneral" class="hidden">
         <div class="form-section">
-          <h3>Contact Information</h3>
-          <p class="desc">This information appears in your site footer and on the Contact page.</p>
+          <h3>General Preferences</h3>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">Phone Number</label><input id="cs_phone" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
-            <div class="form-group"><label class="form-label">WhatsApp Number</label><input id="cs_whatsapp" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
+            <div class="form-group"><label class="form-label">Timezone</label><select class="form-select"><option>Asia/Kolkata (IST)</option></select></div>
+            <div class="form-group"><label class="form-label">Currency</label><select class="form-select"><option>INR (₹)</option></select></div>
           </div>
-          <div class="form-group"><label class="form-label">Email Address</label><input id="cs_email" class="form-input" placeholder="you@yourdomain.com" /></div>
-          <div class="form-group"><label class="form-label">Store Address</label><textarea id="cs_address" class="form-textarea" placeholder="Your store's full address"></textarea></div>
-          <div class="form-group"><label class="form-label">Google Maps URL</label><input id="cs_maps" class="form-input" placeholder="https://maps.google.com/..." /></div>
-          <div class="form-group"><label class="form-label">Business Hours</label><input id="cs_hours" class="form-input" placeholder="e.g. Mon-Sat: 10:00 AM - 8:00 PM" /></div>
+          <div class="form-group"><label class="form-label">Date Format</label><select id="set_dateFormat" class="form-select"><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option></select></div>
         </div>
-        <button class="btn btn-primary" id="cs_saveBtn" onclick="saveContactPanel()">Save Changes</button>
+        <button class="btn btn-primary" id="saveGeneralBtn">Save Changes</button>
       </div>
 
-      <div id="storePanelSocial" class="hidden">
+      <div id="panelNotifications" class="hidden">
         <div class="form-section">
-          <h3>Social Media Links</h3>
-          <div class="form-group"><label class="form-label">Instagram</label><input class="form-input" placeholder="https://instagram.com/sanjaybaghouse" /></div>
-          <div class="form-group"><label class="form-label">Facebook</label><input class="form-input" placeholder="https://facebook.com/sanjaybaghouse" /></div>
-          <div class="form-group"><label class="form-label">YouTube</label><input class="form-input" placeholder="https://youtube.com/@sanjaybaghouse" /></div>
+          <h3>Notification Preferences</h3>
+          <p class="desc" style="margin-bottom:16px;">These preferences aren't wired to real email/SMS alerts yet — that requires a backend notification service, which isn't set up. New order and low-stock info is always visible on your Dashboard regardless of these toggles.</p>
+          <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);"><span class="body-text">New order notifications</span><label class="toggle"><input type="checkbox" checked disabled/><span class="toggle-slider"></span></label></div>
+          <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);"><span class="body-text">Low stock alerts</span><label class="toggle"><input type="checkbox" checked disabled/><span class="toggle-slider"></span></label></div>
+          <div class="flex justify-between items-center" style="padding:10px 0;"><span class="body-text">Customer review notifications</span><label class="toggle"><input type="checkbox" checked disabled/><span class="toggle-slider"></span></label></div>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
       </div>
 
-      <div id="storePanelBusiness" class="hidden">
+      <div id="panelSecurity" class="hidden">
         <div class="form-section">
-          <h3>Business Details</h3>
-          <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">GSTIN</label><input class="form-input" placeholder="e.g. 27ABCDE1234F1Z5" /></div>
-            <div class="form-group"><label class="form-label">Return Period</label><input class="form-input" value="7 Days" /></div>
-          </div>
-          <div class="form-group"><label class="form-label">Shipping Information</label><textarea class="form-textarea">We ship across India within 4-7 business days. Free shipping on orders above ₹999.</textarea></div>
+          <h3>Security</h3>
+          <p class="desc" style="margin-bottom:16px;">Two-factor authentication isn't set up yet. Your account is protected by your password and by admin-only access rules enforced on every page and every database write.</p>
+          <div class="flex justify-between items-center" style="padding:10px 0;"><span class="body-text">Two-factor authentication</span><span class="badge badge-neutral">Not available yet</span></div>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
       </div>
     </div>
   </div>
@@ -108,43 +91,84 @@
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
-<script type="module" src="/js/store-settings.js"></script>
 <script type="module">
+import SBHAuth from "/js/auth.js";
+import { auth, db } from "/js/firebase-init.js";
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
 (async () => {
-  AdminShell.init('store-settings', 'Store Settings');
+  AdminShell.init('settings', 'Settings');
 
-  const settings = await window.SBHStoreSettings.loadContactSettings();
-  document.getElementById('cs_phone').value = settings.phone;
-  document.getElementById('cs_whatsapp').value = settings.whatsapp;
-  document.getElementById('cs_email').value = settings.email;
-  document.getElementById('cs_address').value = settings.address;
-  document.getElementById('cs_maps').value = settings.mapsUrl;
-  document.getElementById('cs_hours').value = settings.hours;
+  const user = await SBHAuth.getCurrentUser();
+  const profile = user ? await SBHAuth.getCustomerProfile(user.uid) : null;
 
-  window.saveContactPanel = async function() {
-    const btn = document.getElementById('cs_saveBtn');
+  document.getElementById('set_name').value = profile?.name || user?.displayName || '';
+  document.getElementById('set_email').value = user?.email || '';
+  document.getElementById('set_photoUrl').value = profile?.photoUrl || '';
+  updateAvatarPreview();
+
+  function updateAvatarPreview() {
+    const url = document.getElementById('set_photoUrl').value.trim();
+    const img = document.getElementById('adminAvatarImg');
+    const fallback = document.getElementById('adminAvatarFallback');
+    const name = document.getElementById('set_name').value.trim();
+    fallback.textContent = (name || 'A').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    if (url) { img.src = url; img.style.display = 'block'; fallback.style.display = 'none'; }
+    else { img.style.display = 'none'; fallback.style.display = 'flex'; }
+  }
+  document.getElementById('set_photoUrl').addEventListener('input', updateAvatarPreview);
+  document.getElementById('set_name').addEventListener('input', updateAvatarPreview);
+
+  document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveProfileBtn');
     btn.disabled = true; btn.textContent = 'Saving...';
     try {
-      await window.SBHStoreSettings.saveContactSettings({
-        phone: document.getElementById('cs_phone').value.trim(),
-        whatsapp: document.getElementById('cs_whatsapp').value.trim(),
-        email: document.getElementById('cs_email').value.trim(),
-        address: document.getElementById('cs_address').value.trim(),
-        mapsUrl: document.getElementById('cs_maps').value.trim(),
-        hours: document.getElementById('cs_hours').value.trim(),
-      });
-      showToast('Contact information saved successfully', 'success');
+      const name = document.getElementById('set_name').value.trim();
+      const photoUrl = document.getElementById('set_photoUrl').value.trim();
+      await updateProfile(auth.currentUser, { displayName: name, photoURL: photoUrl || null });
+      await updateDoc(doc(db, "customers", user.uid), { name, photoUrl });
+      showToast('Profile updated successfully', 'success');
     } catch (err) {
-      showToast('Could not save. Please try again.', 'error');
+      showToast('Could not update profile. Please try again.', 'error');
     }
     btn.disabled = false; btn.textContent = 'Save Changes';
-  };
+  });
+
+  document.getElementById('savePassBtn').addEventListener('click', async () => {
+    const curPass = document.getElementById('set_curPass').value;
+    const newPass = document.getElementById('set_newPass').value;
+    if (!curPass || !newPass) { showToast('Please fill in both password fields.', 'error'); return; }
+    if (newPass.length < 6) { showToast('New password should be at least 6 characters.', 'error'); return; }
+    const btn = document.getElementById('savePassBtn');
+    btn.disabled = true; btn.textContent = 'Updating...';
+    try {
+      const cred = EmailAuthProvider.credential(user.email, curPass);
+      await reauthenticateWithCredential(auth.currentUser, cred);
+      await updatePassword(auth.currentUser, newPass);
+      showToast('Password updated successfully', 'success');
+      document.getElementById('set_curPass').value = '';
+      document.getElementById('set_newPass').value = '';
+    } catch (err) {
+      showToast(err.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : 'Could not update password. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Update Password';
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await SBHAuth.logout();
+    window.location.href = '/login.html';
+  });
+
+  document.getElementById('saveGeneralBtn').addEventListener('click', () => {
+    // Date format preference is display-only for now (site is India-only: IST/INR fixed)
+    showToast('Preference saved', 'success');
+  });
 })();
-</script>
-<script>
-const panels = { branding: 'storePanelBranding', contact: 'storePanelContact', social: 'storePanelSocial', business: 'storePanelBusiness' };
-document.querySelectorAll('#storeTabs .settings-tab').forEach(tab => tab.addEventListener('click', function() {
-  document.querySelectorAll('#storeTabs .settings-tab').forEach(t=>t.classList.remove('active'));
+
+const panels = { profile: 'panelProfile', general: 'panelGeneral', notifications: 'panelNotifications', security: 'panelSecurity' };
+document.querySelectorAll('#setTabs .settings-tab').forEach(tab => tab.addEventListener('click', function() {
+  document.querySelectorAll('#setTabs .settings-tab').forEach(t=>t.classList.remove('active'));
   this.classList.add('active');
   Object.values(panels).forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById(panels[this.dataset.t]).classList.remove('hidden');
