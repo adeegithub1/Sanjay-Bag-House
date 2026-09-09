@@ -37,6 +37,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 SBHComponents.init('shop');
+const { loadShippingSettings } = await import("/js/store-settings.js");
+const shippingSettings = await loadShippingSettings();
 
 const user = await SBHAuth.getCurrentUser();
 if (!user) {
@@ -49,7 +51,15 @@ const data = window.SBH_DATA;
 let storedCoupon = null;
 try { storedCoupon = JSON.parse(localStorage.getItem('sbh_coupon')); } catch (e) {}
 
-if (!items.length) {
+if (!shippingSettings.codEnabled) {
+  document.getElementById('checkoutWrap').innerHTML = `
+    <div class="empty-state">
+      <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+      <h3>Checkout is temporarily unavailable</h3>
+      <p>Online payments aren't set up yet, and Cash on Delivery is currently turned off. Please check back soon.</p>
+      <a href="/shop.html" class="btn btn-primary">Continue Shopping</a>
+    </div>`;
+} else if (!items.length) {
   document.getElementById('checkoutWrap').innerHTML = `
     <div class="empty-state">
       <div class="icon-wrap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg></div>
@@ -60,8 +70,12 @@ if (!items.length) {
 } else {
   const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
   const couponDiscount = storedCoupon ? storedCoupon.amount : 0;
-  const shipping = subtotal > 999 ? 0 : 79;
-  const total = subtotal - couponDiscount + shipping;
+  const shipping = subtotal > shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
+  const codFee = shippingSettings.codFee || 0;
+  const total = subtotal - couponDiscount + shipping + codFee;
+  const belowCodMin = shippingSettings.codMinOrder > 0 && subtotal < shippingSettings.codMinOrder;
+  const aboveCodMax = shippingSettings.codMaxOrder > 0 && subtotal > shippingSettings.codMaxOrder;
+  const codBlocked = belowCodMin || aboveCodMax;
 
   document.getElementById('checkoutWrap').innerHTML = `
   <div class="cart-layout">
@@ -117,8 +131,10 @@ if (!items.length) {
         <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
         ${storedCoupon ? `<div class="summary-row"><span>Coupon (${storedCoupon.code})</span><span style="color:var(--color-success);">− ${data.formatINR(couponDiscount)}</span></div>` : ''}
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
+        ${codFee > 0 ? `<div class="summary-row"><span>COD Fee</span><span>${data.formatINR(codFee)}</span></div>` : ''}
         <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
-        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn">Place Order (COD)</button>
+        ${codBlocked ? `<p class="form-error" style="margin-top:8px;">${belowCodMin ? `Minimum order for COD is ${data.formatINR(shippingSettings.codMinOrder)}.` : `Maximum order for COD is ${data.formatINR(shippingSettings.codMaxOrder)}.`}</p>` : ''}
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn" ${codBlocked ? 'disabled' : ''}>Place Order (COD)</button>
         <p class="caption-text" style="text-align:center;margin-top:10px;">🔒 Your information is safe and secure</p>
       </div>
     </div>
@@ -129,6 +145,12 @@ window.placeOrder = async function(e) {
   e.preventDefault();
   const form = document.getElementById('checkoutForm');
   if (!form.checkValidity()) { form.reportValidity(); return; }
+
+  if (!shippingSettings.codEnabled) { showToast('Cash on Delivery is currently unavailable.', 'error'); return; }
+  const currentSubtotal = items.reduce((s,i)=>s+i.lineTotal,0);
+  if (shippingSettings.codMinOrder > 0 && currentSubtotal < shippingSettings.codMinOrder) { showToast('Order does not meet the minimum for COD.', 'error'); return; }
+  if (shippingSettings.codMaxOrder > 0 && currentSubtotal > shippingSettings.codMaxOrder) { showToast('Order exceeds the maximum for COD.', 'error'); return; }
+
   const btn = document.getElementById('placeOrderBtn');
   btn.disabled = true; btn.textContent = 'Placing order...';
 
@@ -178,16 +200,17 @@ window.placeOrder = async function(e) {
         tx.update(productRefs[idx], { stock: snaps[idx].data().stock - freshItems[idx].qty });
       }
 
-      const shipping = subtotal >= 999 ? 0 : 79;
+      const shipping = subtotal >= shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
       const discount = storedCoupon ? Math.min(storedCoupon.amount, subtotal) : 0;
-      const total = subtotal - discount + shipping;
+      const codFee = shippingSettings.codFee || 0;
+      const total = subtotal - discount + shipping + codFee;
 
       tx.set(orderRef, {
         userId: user.uid,
         items: orderItems,
         address,
         paymentMethod: "cod",
-        subtotal, shipping, discount,
+        subtotal, shipping, discount, codFee,
         couponCode: storedCoupon ? storedCoupon.code : null,
         total,
         status: "pending",
