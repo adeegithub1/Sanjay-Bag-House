@@ -94,13 +94,14 @@
       <div id="storePanelBusiness" class="hidden">
         <div class="form-section">
           <h3>Business Details</h3>
+          <p class="desc" style="margin-bottom:14px;">For your own records — not currently shown anywhere on the live site.</p>
           <div class="form-row form-row-2">
-            <div class="form-group"><label class="form-label">GSTIN</label><input class="form-input" placeholder="e.g. 27ABCDE1234F1Z5" /></div>
-            <div class="form-group"><label class="form-label">Return Period</label><input class="form-input" value="7 Days" /></div>
+            <div class="form-group"><label class="form-label">GSTIN</label><input id="bd_gstin" class="form-input" placeholder="e.g. 27ABCDE1234F1Z5" /></div>
+            <div class="form-group"><label class="form-label">Return Period</label><input id="bd_returnPeriod" class="form-input" placeholder="e.g. 7 Days" /></div>
           </div>
-          <div class="form-group"><label class="form-label">Shipping Information</label><textarea class="form-textarea">We ship across India within 4-7 business days. Free shipping on orders above ₹999.</textarea></div>
+          <div class="form-group"><label class="form-label">Shipping Information</label><textarea id="bd_shippingInfo" class="form-textarea" placeholder="e.g. We ship across India within 4-7 business days."></textarea></div>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
+        <button class="btn btn-primary" id="bd_saveBtn">Save Changes</button>
       </div>
     </div>
   </div>
@@ -166,6 +167,26 @@
         youtube: document.getElementById('sm_youtube').value.trim(),
       });
       showToast('Social links saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  });
+
+  const business = await window.SBHStoreSettings.loadBusinessSettings();
+  document.getElementById('bd_gstin').value = business.gstin;
+  document.getElementById('bd_returnPeriod').value = business.returnPeriod;
+  document.getElementById('bd_shippingInfo').value = business.shippingInfo;
+  document.getElementById('bd_saveBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('bd_saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveBusinessSettings({
+        gstin: document.getElementById('bd_gstin').value.trim(),
+        returnPeriod: document.getElementById('bd_returnPeriod').value.trim(),
+        shippingInfo: document.getElementById('bd_shippingInfo').value.trim(),
+      });
+      showToast('Business details saved successfully', 'success');
     } catch (err) {
       showToast('Could not save. Please try again.', 'error');
     }
