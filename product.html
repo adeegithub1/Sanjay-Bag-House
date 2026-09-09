@@ -60,7 +60,7 @@ function renderPDP() {
     <div>
       <div class="pdp-gallery-main">
         <img src="${p.images[0]}" alt="${p.name}" id="mainImg" />
-        <button class="zoom-btn" aria-label="Zoom image" onclick="showToast('Opening full image view')">
+        <button class="zoom-btn" aria-label="Zoom image" onclick="openImageZoom()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg>
         </button>
       </div>
@@ -113,6 +113,32 @@ function renderPDP() {
 }
 
 window.setImg = function(i){ document.getElementById('mainImg').src = p.images[i]; document.querySelectorAll('.pdp-thumb').forEach((t,idx)=>t.classList.toggle('active', idx===i)); };
+
+window.openImageZoom = function() {
+  const currentSrc = document.getElementById('mainImg').src;
+  let modal = document.getElementById('imageZoomModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'imageZoomModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(14,27,52,0.92);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+    modal.innerHTML = `
+      <button aria-label="Close" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;width:40px;height:40px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <img id="zoomedImg" src="" alt="${p.name}" style="max-width:92%;max-height:90vh;object-fit:contain;border-radius:8px;cursor:default;" />`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('button')) closeImageZoom(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeImageZoom(); });
+  }
+  document.getElementById('zoomedImg').src = currentSrc;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+};
+window.closeImageZoom = function() {
+  const modal = document.getElementById('imageZoomModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+};
 window.changeQty = function(d){ qty = Math.max(1, Math.min(p.stock, qty+d)); document.getElementById('qtyVal').textContent = qty; };
 window.addToCartPDP = function(){ window.SBHStore.addToCart(p.id, qty); showToast('Product added to cart','success'); };
 window.buyNowPDP = function(){ window.SBHStore.addToCart(p.id, qty); window.location.href = '/checkout.html'; };
