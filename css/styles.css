@@ -140,11 +140,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: var(--header-h); gap: 6px; }
 .logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; line-height: 1.05; color: #fff; white-space: nowrap; }
 .logo-text-wrap { display: flex; flex-direction: column; }
-.logo .sbh-logo-img { height: 34px; width: auto; max-width: 160px; object-fit: contain; }
+.logo .sbh-logo-img {
+  height: 40px; width: auto; max-width: 170px; object-fit: contain;
+  background: #fff; border-radius: 8px; padding: 4px 8px; box-sizing: content-box;
+}
+.site-footer .logo .sbh-logo-img, .drawer-header .logo .sbh-logo-img { height: 34px; }
 @media (max-width: 380px) {
   .header-inner { gap: 2px; }
   .logo { font-size: 15px; }
   .logo small { display: none; }
+  .logo .sbh-logo-img { height: 32px; max-width: 120px; }
   .header-actions .icon-btn { padding: 6px; }
 }
 .logo small { font-family: var(--font-sans); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #B8C4DB; font-weight: 600; margin-top: 2px; }
