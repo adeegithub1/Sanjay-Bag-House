@@ -45,5 +45,24 @@ async function saveBrandingSettings(data) {
   _brandingCache = { ...BRANDING_DEFAULTS, ...data };
 }
 
-window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings };
-export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings };
+const SOCIAL_DEFAULTS = { instagram: "", facebook: "", youtube: "" };
+let _socialCache = null;
+
+async function loadSocialSettings() {
+  if (_socialCache) return _socialCache;
+  try {
+    const snap = await getDoc(doc(db, "storeSettings", "social"));
+    _socialCache = snap.exists() ? { ...SOCIAL_DEFAULTS, ...snap.data() } : { ...SOCIAL_DEFAULTS };
+  } catch (e) {
+    _socialCache = { ...SOCIAL_DEFAULTS };
+  }
+  return _socialCache;
+}
+
+async function saveSocialSettings(data) {
+  await setDoc(doc(db, "storeSettings", "social"), { ...data, updatedAt: serverTimestamp() });
+  _socialCache = { ...SOCIAL_DEFAULTS, ...data };
+}
+
+window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings };
+export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings };
