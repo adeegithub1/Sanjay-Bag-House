@@ -138,8 +138,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* ---------- Header ---------- */
 .site-header { position: sticky; top: 0; z-index: 100; background: var(--color-primary); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: var(--header-h); gap: 6px; }
-.logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; flex-direction: column; line-height: 1.05; color: #fff; white-space: nowrap; }
-.logo .sbh-logo-img { height: 32px; width: auto; max-width: 140px; object-fit: contain; margin-bottom: 2px; }
+.logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; line-height: 1.05; color: #fff; white-space: nowrap; }
+.logo-text-wrap { display: flex; flex-direction: column; }
+.logo .sbh-logo-img { height: 34px; width: auto; max-width: 160px; object-fit: contain; }
 @media (max-width: 380px) {
   .header-inner { gap: 2px; }
   .logo { font-size: 15px; }
