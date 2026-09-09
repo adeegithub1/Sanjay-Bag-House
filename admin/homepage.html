@@ -83,23 +83,23 @@
 
       <!-- Why Choose Us -->
       <div class="admin-panel">
-        <div class="admin-panel-head"><h3>Why Choose Us</h3><label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label></div>
+        <div class="admin-panel-head"><h3>Why Choose Us</h3></div>
         <div class="admin-panel-body">
-          <div class="form-row form-row-2" id="whyChooseGrid" style="margin-bottom:14px;"></div>
-          <button class="btn btn-primary btn-sm" onclick="showToast('Why Choose Us section saved successfully','success')">Save Section</button>
+          <p class="desc" style="margin-bottom:12px;">Edit the title and description for each of the 4 value props shown on your homepage.</p>
+          <div id="whyChooseGrid" style="margin-bottom:14px;"></div>
+          <button class="btn btn-primary btn-sm" id="saveWhyChooseBtn">Save Section</button>
         </div>
       </div>
 
       <!-- Testimonials -->
       <div class="admin-panel">
-        <div class="admin-panel-head"><h3>Testimonials</h3><div class="flex gap-8"><button class="btn btn-ghost btn-sm" onclick="showToast('New testimonial slot added')">+ Add Testimonial</button><label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label></div></div>
+        <div class="admin-panel-head"><h3>Testimonials</h3><a href="/admin/reviews.html" class="btn btn-ghost btn-sm">Manage in Reviews →</a></div>
         <div class="admin-panel-body">
+          <p class="desc" style="margin-bottom:12px;">Your homepage automatically shows your top 3 highest-rated <strong>approved</strong> reviews here — no separate management needed. Approve reviews in the Reviews page and they'll appear on the homepage automatically.</p>
           <div class="dt-wrap">
             <table class="data-table">
-              <thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th>Order</th><th>Actions</th></tr></thead>
-              <tbody>
-                <tr><td colspan="5"><div class="empty-state" style="padding:24px;"><p style="font-size:12.5px;color:var(--color-muted);">No testimonials yet. This section (and the homepage "Customer Reviews" block) is ready to display real ones once you have them — this table isn't connected to live data yet, so anything added here won't appear on the site until that's wired up.</p></div></td></tr>
-              </tbody>
+              <thead><tr><th>Customer</th><th>Rating</th><th>Review</th></tr></thead>
+              <tbody id="testimonialPreviewBody"></tbody>
             </table>
           </div>
         </div>
@@ -208,16 +208,39 @@ import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "https://www
     };
     modal.classList.add('open');
   };
+
+  // ---- Why Choose Us ----
+  const WHY_DEFAULTS = [
+    { title: 'Quality Products', text: 'Crafted with premium materials built to last.' },
+    { title: 'Secure Payments', text: '100% secure checkout with trusted payment options.' },
+    { title: 'Easy Returns', text: 'Hassle-free 7-day return and exchange policy.' },
+    { title: 'Fast Delivery', text: 'Quick, reliable shipping across India.' },
+  ];
+  const whyItems = (homeSettings.whyChooseUs && homeSettings.whyChooseUs.length === 4) ? homeSettings.whyChooseUs : WHY_DEFAULTS;
+  document.getElementById('whyChooseGrid').innerHTML = whyItems.map((w,i) => `
+    <div class="form-row form-row-2" style="margin-bottom:10px;">
+      <div class="form-group"><label class="form-label">Title ${i+1}</label><input class="form-input why-title-input" value="${w.title}" /></div>
+      <div class="form-group"><label class="form-label">Description ${i+1}</label><input class="form-input why-text-input" value="${w.text}" /></div>
+    </div>`).join('');
+  document.getElementById('saveWhyChooseBtn').addEventListener('click', async () => {
+    const titles = Array.from(document.querySelectorAll('.why-title-input')).map(el => el.value.trim());
+    const texts = Array.from(document.querySelectorAll('.why-text-input')).map(el => el.value.trim());
+    const payload = titles.map((title, i) => ({ title, text: texts[i] }));
+    try {
+      await setDoc(doc(db, "storeSettings", "homepage"), { ...homeSettings, whyChooseUs: payload }, { merge: true });
+      showToast('Why Choose Us section saved successfully', 'success');
+    } catch (err) { showToast('Could not save. Please try again.', 'error'); }
+  });
+
+  // ---- Testimonials preview (real approved reviews, read-only here) ----
+  const reviewSnap = await getDocs(collection(db, "reviews"));
+  const approvedReviews = reviewSnap.docs.map(d => d.data()).filter(r => r.status === 'approved').sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,3);
+  function stars(n) { return "★★★★★☆☆☆☆☆".slice(5-n,10-n); }
+  document.getElementById('testimonialPreviewBody').innerHTML = approvedReviews.length
+    ? approvedReviews.map(r => `<tr><td>${r.customerName||'Customer'}</td><td style="color:var(--color-star);">${stars(r.rating)}</td><td style="max-width:320px;font-size:12.5px;">${r.text}</td></tr>`).join('')
+    : `<tr><td colspan="3"><div class="empty-state" style="padding:20px;"><p style="font-size:12.5px;color:var(--color-muted);">No approved reviews yet — once customers leave reviews and you approve them in the Reviews page, the top 3 will show here automatically.</p></div></td></tr>`;
 })();
 </script>
-const whyItems = [
-  { title: 'Quality Products', desc: 'Crafted with premium materials built to last.' },
-  { title: 'Secure Payments', desc: '100% secure checkout with trusted payment options.' },
-  { title: 'Easy Returns', desc: 'Hassle-free 7-day return and exchange policy.' },
-  { title: 'Fast Delivery', desc: 'Quick, reliable shipping across India.' },
-];
-document.getElementById('whyChooseGrid').innerHTML = whyItems.map(w => `
-  <div class="form-group"><label class="form-label">${w.title}</label><input class="form-input" value="${w.desc}" /></div>`).join('');
-</script>
+
 </body>
 </html>
