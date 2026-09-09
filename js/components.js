@@ -36,7 +36,7 @@
         <button class="icon-btn hamburger-btn" aria-label="Open menu" onclick="SBHComponents.openDrawer()">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
-        <a href="/index.html" class="logo">Sanjay Bag House<small>Carry What Matters</small></a>
+        <a href="/index.html" class="logo"><span class="logo-text-wrap">Sanjay Bag House<small>Carry What Matters</small></span></a>
         <nav class="nav-desktop">
           <a href="/index.html" class="${active === 'home' ? 'active' : ''}">Home</a>
           <a href="/shop.html" class="${active === 'shop' ? 'active' : ''}">Shop</a>
@@ -81,7 +81,7 @@
     <div class="drawer-overlay" id="drawerOverlay" onclick="SBHComponents.closeDrawer()"></div>
     <div class="drawer" id="mobileDrawer" role="dialog" aria-label="Site menu">
       <div class="drawer-header">
-        <span class="logo" style="font-size:17px;">Sanjay Bag House</span>
+        <span class="logo" style="font-size:17px;"><span class="logo-text-wrap">Sanjay Bag House</span></span>
         <button class="icon-btn" aria-label="Close menu" onclick="SBHComponents.closeDrawer()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -119,7 +119,7 @@
     <footer class="site-footer">
       <div class="container footer-grid">
         <div class="footer-brand">
-          <a href="/index.html" class="logo" style="color:#fff;">Sanjay Bag House</a>
+          <a href="/index.html" class="logo" style="color:#fff;"><span class="logo-text-wrap">Sanjay Bag House</span></a>
           <p>Premium bags and luggage, crafted for everyday life, work and travel. Trusted by thousands of customers across India.</p>
           <div class="footer-social" id="footerSocialLinks">
             <a href="#" aria-label="Instagram" class="fs-instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
@@ -202,6 +202,8 @@
         if (b.logoUrl) {
           document.querySelectorAll("a.logo, span.logo").forEach((el) => {
             if (el.querySelector(".sbh-logo-img")) return;
+            const textWrap = el.querySelector(".logo-text-wrap");
+            if (textWrap) textWrap.style.display = "none";
             const img = document.createElement("img");
             img.src = b.logoUrl;
             img.alt = "Sanjay Bag House";
