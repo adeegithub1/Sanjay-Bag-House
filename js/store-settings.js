@@ -1,68 +1,213 @@
-/* ============================================================
-   SANJAY BAG HOUSE — STORE SETTINGS
-   Real Firestore-backed store contact info (storeSettings/contact).
-   Public read (anyone can load it for footer/contact page), admin write.
-   ============================================================ */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Store Settings | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
+</head>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head"><div><h1>Store Settings</h1><p>Manage your store's branding, contact details and business information.</p></div></div>
 
-import { db } from "./firebase-init.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+      <div class="settings-tabs" id="storeTabs">
+        <button class="settings-tab active" data-t="branding">Branding</button>
+        <button class="settings-tab" data-t="contact">Contact</button>
+        <button class="settings-tab" data-t="social">Social Media</button>
+        <button class="settings-tab" data-t="business">Business</button>
+      </div>
 
-const DEFAULTS = { phone: "", whatsapp: "", email: "", address: "", mapsUrl: "", hours: "" };
-let _cache = null;
+      <div id="storePanelBranding">
+        <div class="form-section">
+          <h3>Logo &amp; Favicon</h3>
+          <p class="desc">Your logo appears in the header. Paste image URLs below (real file upload isn't available — Firebase file storage now requires a paid plan, so this uses hosted image links instead, same as your product photos).</p>
+          <div class="form-row form-row-2">
+            <div>
+              <label class="form-label">Store Logo Image URL</label>
+              <div style="border:1.5px dashed var(--color-border);border-radius:8px;padding:20px;text-align:center;margin-bottom:10px;" id="logoPreviewWrap">
+                <div class="logo" style="justify-content:center;display:flex;flex-direction:column;align-items:center;color:var(--color-text);">Sanjay Bag House<small>Carry What Matters</small></div>
+              </div>
+              <input id="bs_logoUrl" class="form-input" placeholder="https://... (leave blank to use text logo)" />
+            </div>
+            <div>
+              <label class="form-label">Favicon Image URL</label>
+              <div style="border:1.5px dashed var(--color-border);border-radius:8px;padding:20px;text-align:center;margin-bottom:10px;" id="faviconPreviewWrap">
+                <div style="width:32px;height:32px;background:var(--color-primary);border-radius:6px;margin:0 auto;"></div>
+              </div>
+              <input id="bs_faviconUrl" class="form-input" placeholder="https://... (small square image, e.g. 64x64)" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="saveBrandingBtn" style="margin-top:14px;">Save Branding</button>
+        </div>
+        <div class="form-section">
+          <h3>Store Identity</h3>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Store Name</label><input class="form-input" value="Sanjay Bag House" /></div>
+            <div class="form-group"><label class="form-label">Tagline</label><input class="form-input" value="Carry What Matters." /></div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h3>Brand Colors</h3>
+          <div class="form-row form-row-3">
+            <div class="form-group"><label class="form-label">Primary</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#171717" /><input class="form-input" value="#171717" /></div></div>
+            <div class="form-group"><label class="form-label">Secondary</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#F5EFE6" /><input class="form-input" value="#F5EFE6" /></div></div>
+            <div class="form-group"><label class="form-label">Accent</label><div class="color-input-row"><input type="color" class="color-swatch-input" value="#8A5A3B" /><input class="form-input" value="#8A5A3B" /></div></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
+      </div>
 
-async function loadContactSettings() {
-  if (_cache) return _cache;
-  try {
-    const snap = await getDoc(doc(db, "storeSettings", "contact"));
-    _cache = snap.exists() ? { ...DEFAULTS, ...snap.data() } : { ...DEFAULTS };
-  } catch (e) {
-    _cache = { ...DEFAULTS };
+      <div id="storePanelContact" class="hidden">
+        <div class="form-section">
+          <h3>Contact Information</h3>
+          <p class="desc">This information appears in your site footer and on the Contact page.</p>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Phone Number</label><input id="cs_phone" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
+            <div class="form-group"><label class="form-label">WhatsApp Number</label><input id="cs_whatsapp" class="form-input" placeholder="+91 XXXXX XXXXX" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email Address</label><input id="cs_email" class="form-input" placeholder="you@yourdomain.com" /></div>
+          <div class="form-group"><label class="form-label">Store Address</label><textarea id="cs_address" class="form-textarea" placeholder="Your store's full address"></textarea></div>
+          <div class="form-group"><label class="form-label">Google Maps URL</label><input id="cs_maps" class="form-input" placeholder="https://maps.google.com/..." /></div>
+          <div class="form-group"><label class="form-label">Business Hours</label><input id="cs_hours" class="form-input" placeholder="e.g. Mon-Sat: 10:00 AM - 8:00 PM" /></div>
+        </div>
+        <button class="btn btn-primary" id="cs_saveBtn" onclick="saveContactPanel()">Save Changes</button>
+      </div>
+
+      <div id="storePanelSocial" class="hidden">
+        <div class="form-section">
+          <h3>Social Media Links</h3>
+          <div class="form-group"><label class="form-label">Instagram</label><input id="sm_instagram" class="form-input" placeholder="https://instagram.com/yourstore" /></div>
+          <div class="form-group"><label class="form-label">Facebook</label><input id="sm_facebook" class="form-input" placeholder="https://facebook.com/yourstore" /></div>
+          <div class="form-group"><label class="form-label">YouTube</label><input id="sm_youtube" class="form-input" placeholder="https://youtube.com/@yourstore" /></div>
+        </div>
+        <button class="btn btn-primary" id="sm_saveBtn">Save Changes</button>
+      </div>
+
+      <div id="storePanelBusiness" class="hidden">
+        <div class="form-section">
+          <h3>Business Details</h3>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">GSTIN</label><input class="form-input" placeholder="e.g. 27ABCDE1234F1Z5" /></div>
+            <div class="form-group"><label class="form-label">Return Period</label><input class="form-input" value="7 Days" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">Shipping Information</label><textarea class="form-textarea">We ship across India within 4-7 business days. Free shipping on orders above ₹999.</textarea></div>
+        </div>
+        <button class="btn btn-primary" onclick="showToast('Settings saved successfully','success')">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script type="module" src="/js/store-settings.js"></script>
+<script type="module">
+(async () => {
+  AdminShell.init('store-settings', 'Store Settings');
+
+  const branding = await window.SBHStoreSettings.loadBrandingSettings();
+  document.getElementById('bs_logoUrl').value = branding.logoUrl;
+  document.getElementById('bs_faviconUrl').value = branding.faviconUrl;
+  updateLogoPreview();
+  updateFaviconPreview();
+
+  function updateLogoPreview() {
+    const url = document.getElementById('bs_logoUrl').value.trim();
+    const wrap = document.getElementById('logoPreviewWrap');
+    wrap.innerHTML = url
+      ? `<img src="${url}" alt="Logo preview" style="height:40px;max-width:200px;object-fit:contain;" />`
+      : `<div class="logo" style="justify-content:center;display:flex;flex-direction:column;align-items:center;color:var(--color-text);">Sanjay Bag House<small>Carry What Matters</small></div>`;
   }
-  return _cache;
-}
-
-async function saveContactSettings(data) {
-  await setDoc(doc(db, "storeSettings", "contact"), { ...data, updatedAt: serverTimestamp() });
-  _cache = { ...DEFAULTS, ...data };
-}
-
-const BRANDING_DEFAULTS = { logoUrl: "", faviconUrl: "" };
-let _brandingCache = null;
-
-async function loadBrandingSettings() {
-  if (_brandingCache) return _brandingCache;
-  try {
-    const snap = await getDoc(doc(db, "storeSettings", "branding"));
-    _brandingCache = snap.exists() ? { ...BRANDING_DEFAULTS, ...snap.data() } : { ...BRANDING_DEFAULTS };
-  } catch (e) {
-    _brandingCache = { ...BRANDING_DEFAULTS };
+  function updateFaviconPreview() {
+    const url = document.getElementById('bs_faviconUrl').value.trim();
+    const wrap = document.getElementById('faviconPreviewWrap');
+    wrap.innerHTML = url
+      ? `<img src="${url}" alt="Favicon preview" style="width:32px;height:32px;object-fit:contain;margin:0 auto;display:block;" />`
+      : `<div style="width:32px;height:32px;background:var(--color-primary);border-radius:6px;margin:0 auto;"></div>`;
   }
-  return _brandingCache;
-}
+  document.getElementById('bs_logoUrl').addEventListener('input', updateLogoPreview);
+  document.getElementById('bs_faviconUrl').addEventListener('input', updateFaviconPreview);
 
-async function saveBrandingSettings(data) {
-  await setDoc(doc(db, "storeSettings", "branding"), { ...data, updatedAt: serverTimestamp() });
-  _brandingCache = { ...BRANDING_DEFAULTS, ...data };
-}
+  document.getElementById('saveBrandingBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveBrandingBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveBrandingSettings({
+        logoUrl: document.getElementById('bs_logoUrl').value.trim(),
+        faviconUrl: document.getElementById('bs_faviconUrl').value.trim(),
+      });
+      showToast('Branding saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save branding. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Branding';
+  });
 
-const SOCIAL_DEFAULTS = { instagram: "", facebook: "", youtube: "" };
-let _socialCache = null;
+  const social = await window.SBHStoreSettings.loadSocialSettings();
+  document.getElementById('sm_instagram').value = social.instagram;
+  document.getElementById('sm_facebook').value = social.facebook;
+  document.getElementById('sm_youtube').value = social.youtube;
+  document.getElementById('sm_saveBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('sm_saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveSocialSettings({
+        instagram: document.getElementById('sm_instagram').value.trim(),
+        facebook: document.getElementById('sm_facebook').value.trim(),
+        youtube: document.getElementById('sm_youtube').value.trim(),
+      });
+      showToast('Social links saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  });
 
-async function loadSocialSettings() {
-  if (_socialCache) return _socialCache;
-  try {
-    const snap = await getDoc(doc(db, "storeSettings", "social"));
-    _socialCache = snap.exists() ? { ...SOCIAL_DEFAULTS, ...snap.data() } : { ...SOCIAL_DEFAULTS };
-  } catch (e) {
-    _socialCache = { ...SOCIAL_DEFAULTS };
-  }
-  return _socialCache;
-}
+  const settings = await window.SBHStoreSettings.loadContactSettings();
+  document.getElementById('cs_phone').value = settings.phone;
+  document.getElementById('cs_whatsapp').value = settings.whatsapp;
+  document.getElementById('cs_email').value = settings.email;
+  document.getElementById('cs_address').value = settings.address;
+  document.getElementById('cs_maps').value = settings.mapsUrl;
+  document.getElementById('cs_hours').value = settings.hours;
 
-async function saveSocialSettings(data) {
-  await setDoc(doc(db, "storeSettings", "social"), { ...data, updatedAt: serverTimestamp() });
-  _socialCache = { ...SOCIAL_DEFAULTS, ...data };
-}
-
-window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings };
-export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings };
+  window.saveContactPanel = async function() {
+    const btn = document.getElementById('cs_saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.saveContactSettings({
+        phone: document.getElementById('cs_phone').value.trim(),
+        whatsapp: document.getElementById('cs_whatsapp').value.trim(),
+        email: document.getElementById('cs_email').value.trim(),
+        address: document.getElementById('cs_address').value.trim(),
+        mapsUrl: document.getElementById('cs_maps').value.trim(),
+        hours: document.getElementById('cs_hours').value.trim(),
+      });
+      showToast('Contact information saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  };
+})();
+</script>
+<script>
+const panels = { branding: 'storePanelBranding', contact: 'storePanelContact', social: 'storePanelSocial', business: 'storePanelBusiness' };
+document.querySelectorAll('#storeTabs .settings-tab').forEach(tab => tab.addEventListener('click', function() {
+  document.querySelectorAll('#storeTabs .settings-tab').forEach(t=>t.classList.remove('active'));
+  this.classList.add('active');
+  Object.values(panels).forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById(panels[this.dataset.t]).classList.remove('hidden');
+}));
+</script>
+</body>
+</html>
