@@ -141,10 +141,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; line-height: 1.05; color: #fff; white-space: nowrap; }
 .logo-text-wrap { display: flex; flex-direction: column; }
 .logo .sbh-logo-img {
-  height: 40px; width: auto; max-width: 170px; object-fit: contain;
-  background: #fff; border-radius: 8px; padding: 4px 8px; box-sizing: content-box;
+  display: block; height: 42px; width: auto; max-width: 170px; object-fit: contain; margin: 0;
 }
-.site-footer .logo .sbh-logo-img, .drawer-header .logo .sbh-logo-img { height: 34px; }
 @media (max-width: 380px) {
   .header-inner { gap: 2px; }
   .logo { font-size: 15px; }
