@@ -23,12 +23,12 @@
   <section class="hero">
     <div class="container hero-grid">
       <div class="hero-copy">
-        <span class="eyebrow">New Season Collection</span>
-        <h1 class="display-heading">Carry What Matters.</h1>
-        <p>Stylish, durable and reliable bags designed for everyday life, work and travel.</p>
+        <span class="eyebrow" id="heroEyebrow">New Season Collection</span>
+        <h1 class="display-heading" id="heroHeading">Carry What Matters.</h1>
+        <p id="heroSubheading">Stylish, durable and reliable bags designed for everyday life, work and travel.</p>
         <div class="hero-actions">
-          <a href="/shop.html" class="btn btn-primary">Shop Collection</a>
-          <a href="/category.html?slug=travel-bags" class="btn btn-secondary">Explore Bags</a>
+          <a href="/shop.html" class="btn btn-primary" id="heroBtnPrimary">Shop Collection</a>
+          <a href="/category.html?slug=travel-bags" class="btn btn-secondary" id="heroBtnSecondary">Explore Bags</a>
         </div>
         <div class="trust-strip-row">
           <div class="trust-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> Cash on Delivery</div>
@@ -38,7 +38,7 @@
         </div>
       </div>
       <div class="hero-image">
-        <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1000&h=750&fit=crop&q=80" alt="Premium leather backpack from Sanjay Bag House" />
+        <img id="heroImage" src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1000&h=750&fit=crop&q=80" alt="Premium leather backpack from Sanjay Bag House" />
       </div>
     </div>
   </section>
@@ -70,12 +70,12 @@
   <!-- SECTION 4: PROMOTIONAL BANNER -->
   <section class="container" style="margin: 40px auto;">
     <div class="promo-banner">
-      <img src="https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1400&h=500&fit=crop&q=80" alt="Traveler with Sanjay Bag House luggage" />
+      <img id="promoImage" src="https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1400&h=500&fit=crop&q=80" alt="Traveler with Sanjay Bag House luggage" />
       <div class="promo-content">
         <span class="eyebrow">Travel Edit</span>
-        <h2>Travel Better. Carry Smarter.</h2>
-        <p>Explore our collection of travel-ready bags built for every journey.</p>
-        <a href="/category.html?slug=travel-bags" class="btn btn-accent">Shop Travel Bags</a>
+        <h2 id="promoHeading">Travel Better. Carry Smarter.</h2>
+        <p id="promoText">Explore our collection of travel-ready bags built for every journey.</p>
+        <a href="/category.html?slug=travel-bags" class="btn btn-accent" id="promoBtn">Shop Travel Bags</a>
       </div>
     </div>
   </section>
@@ -220,7 +220,30 @@
     const { doc, getDoc, collection, query, where, getDocs, orderBy, limit } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
 
     const homeSnap = await getDoc(doc(db, "storeSettings", "homepage"));
-    const whyItems = homeSnap.exists() ? homeSnap.data().whyChooseUs : null;
+    const homeData = homeSnap.exists() ? homeSnap.data() : {};
+
+    if (homeData.hero) {
+      const h = homeData.hero;
+      if (h.eyebrow) document.getElementById('heroEyebrow').textContent = h.eyebrow;
+      if (h.heading) document.getElementById('heroHeading').textContent = h.heading;
+      if (h.subheading) document.getElementById('heroSubheading').textContent = h.subheading;
+      if (h.primaryBtnText) document.getElementById('heroBtnPrimary').textContent = h.primaryBtnText;
+      if (h.primaryBtnUrl) document.getElementById('heroBtnPrimary').href = h.primaryBtnUrl;
+      if (h.secondaryBtnText) document.getElementById('heroBtnSecondary').textContent = h.secondaryBtnText;
+      if (h.secondaryBtnUrl) document.getElementById('heroBtnSecondary').href = h.secondaryBtnUrl;
+      if (h.imageUrl) document.getElementById('heroImage').src = h.imageUrl;
+    }
+
+    if (homeData.promo) {
+      const pr = homeData.promo;
+      if (pr.heading) document.getElementById('promoHeading').textContent = pr.heading;
+      if (pr.text) document.getElementById('promoText').textContent = pr.text;
+      if (pr.btnText) document.getElementById('promoBtn').textContent = pr.btnText;
+      if (pr.btnUrl) document.getElementById('promoBtn').href = pr.btnUrl;
+      if (pr.imageUrl) document.getElementById('promoImage').src = pr.imageUrl;
+    }
+
+    const whyItems = homeData.whyChooseUs;
     if (whyItems && whyItems.length) {
       const nodes = document.querySelectorAll('#whyChooseGrid .why-item');
       whyItems.forEach((item, i) => {
