@@ -191,7 +191,19 @@
   SBHComponents.init('home');
 
   const data = await window.SBH_FIRESTORE.load();
-  document.getElementById('homeCategoryGrid').innerHTML = data.CATEGORIES.slice(0,6).map(c => `
+
+  let featuredCategories = data.CATEGORIES.slice(0,6);
+  try {
+    const { db } = await import("/js/firebase-init.js");
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+    const snap = await getDoc(doc(db, "storeSettings", "homepage"));
+    if (snap.exists() && snap.data().featuredCategoryIds?.length) {
+      const ids = snap.data().featuredCategoryIds;
+      featuredCategories = ids.map(id => data.CATEGORIES.find(c => c.id === id)).filter(Boolean);
+    }
+  } catch (e) { /* fall back to default first-6 */ }
+
+  document.getElementById('homeCategoryGrid').innerHTML = featuredCategories.map(c => `
     <a class="cat-card" href="/category.html?slug=${c.id}">
       <img src="${c.image}" alt="${c.name}" loading="lazy" />
       <div class="cat-overlay"><h3>${c.name}</h3><span>Explore →</span></div>
