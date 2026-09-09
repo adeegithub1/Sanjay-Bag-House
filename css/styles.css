@@ -133,12 +133,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .announce-bar { background: var(--color-primary); color: #fff; font-size: 12.5px; text-align: center; padding: 8px 40px; position: relative; font-weight: 600; }
 .announce-close { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #fff; opacity: .7; padding: 4px; line-height: 0; }
 .announce-close:hover { opacity: 1; }
+@media (max-width: 380px) { .announce-bar { font-size: 11px; padding: 8px 30px; } .announce-close { right: 8px; } }
 
 /* ---------- Header ---------- */
 .site-header { position: sticky; top: 0; z-index: 100; background: var(--color-primary); }
-.header-inner { display: flex; align-items: center; justify-content: space-between; height: var(--header-h); gap: 14px; }
-.logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; flex-direction: column; line-height: 1.05; color: #fff; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: var(--header-h); gap: 6px; }
+.logo { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; display: flex; flex-direction: column; line-height: 1.05; color: #fff; white-space: nowrap; }
 .logo .sbh-logo-img { height: 32px; width: auto; max-width: 140px; object-fit: contain; margin-bottom: 2px; }
+@media (max-width: 380px) {
+  .header-inner { gap: 2px; }
+  .logo { font-size: 15px; }
+  .logo small { display: none; }
+  .header-actions .icon-btn { padding: 6px; }
+}
 .logo small { font-family: var(--font-sans); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #B8C4DB; font-weight: 600; margin-top: 2px; }
 .nav-desktop { display: none; gap: 24px; align-items: center; }
 .nav-desktop a { font-size: 13.5px; font-weight: 600; position: relative; padding: 6px 0; color: #DCE3EE; }
@@ -356,7 +363,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- Shop layout ---------- */
 .shop-layout { display: grid; grid-template-columns: 1fr; gap: 24px; padding: 20px 0 60px; }
-@media (min-width: 900px) { .shop-layout { grid-template-columns: 232px 1fr; } }
+.shop-filter-sidebar { display: none; }
+@media (min-width: 900px) { .shop-layout { grid-template-columns: 232px 1fr; } .shop-filter-sidebar { display: block; } }
 .filter-block { border-bottom: 1px solid var(--color-border); padding-bottom: 16px; margin-bottom: 16px; }
 .filter-block h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 .filter-option { display: flex; align-items: center; gap: 9px; font-size: 13.5px; padding: 6px 0; color: var(--color-text); }
@@ -375,7 +383,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .pdp-gallery-main { border-radius: var(--radius-md); overflow: hidden; aspect-ratio: 1/1; background: var(--color-secondary); position: relative; margin-bottom: 12px; }
 .pdp-gallery-main img { width: 100%; height: 100%; object-fit: cover; }
 .zoom-btn { position: absolute; bottom: 12px; right: 12px; background: #fff; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); }
-.pdp-thumbs { display: flex; gap: 10px; }
+.pdp-thumbs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.pdp-thumbs::-webkit-scrollbar { display: none; }
+.pdp-thumb { flex-shrink: 0; }
 .pdp-thumb { width: 64px; height: 64px; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--color-border); cursor: pointer; }
 .pdp-thumb.active { border-color: var(--color-accent); }
 .pdp-info .brand-link { font-size: 12.5px; color: var(--color-accent); font-weight: 700; }
