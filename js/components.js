@@ -196,6 +196,26 @@
         if (el) el.innerHTML = "";
       });
 
+      // Apply real store logo + favicon (falls back to the text wordmark / default icon if not set)
+      import("/js/store-settings.js").then(async (mod) => {
+        const b = await mod.loadBrandingSettings();
+        if (b.logoUrl) {
+          document.querySelectorAll("a.logo, span.logo").forEach((el) => {
+            if (el.querySelector(".sbh-logo-img")) return;
+            const img = document.createElement("img");
+            img.src = b.logoUrl;
+            img.alt = "Sanjay Bag House";
+            img.className = "sbh-logo-img";
+            el.insertBefore(img, el.firstChild);
+          });
+        }
+        if (b.faviconUrl) {
+          let link = document.querySelector("link[rel='icon']");
+          if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+          link.href = b.faviconUrl;
+        }
+      }).catch(() => {});
+
       SBHComponents.initScrollReveal();
     },
 
