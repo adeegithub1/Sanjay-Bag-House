@@ -4,4 +4,6 @@ add details of products
 and Filter option is not availiable for mobile
 and not working in web also 
 Automatic Rating options are not there, like if u add products by your it dont show ratings with them - so there should be a fake data atleast 
+Update real name, address, and a MAP also to locate us- and about us section and social handles and a little bit animation on whole website 
+
 
