@@ -1,1 +1,5 @@
 
+search by Companies/Brands
+add details of products
+and Filter option is not availiable for mobile
+and not working in web also 
