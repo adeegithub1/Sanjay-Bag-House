@@ -27,7 +27,11 @@
               <h3>Product Image</h3>
               <p class="desc">Paste a direct image URL (e.g. from Unsplash, or your own image hosting). Real file upload isn't wired up yet — that needs Firebase Storage, a later add-on.</p>
               <div class="form-group"><label class="form-label">Primary Image URL <span class="req">*</span></label><input required class="form-input" id="f_image" placeholder="https://..." /></div>
-              <img id="imgPreview" src="" alt="" style="max-width:160px;border-radius:8px;margin-top:8px;display:none;" />
+              <div class="form-group"><label class="form-label">Image 2 URL</label><input class="form-input" id="f_image2" placeholder="https://... (optional)" /></div>
+              <div class="form-group"><label class="form-label">Image 3 URL</label><input class="form-input" id="f_image3" placeholder="https://... (optional)" /></div>
+              <div class="form-group"><label class="form-label">Image 4 URL</label><input class="form-input" id="f_image4" placeholder="https://... (optional)" /></div>
+              <div class="form-group"><label class="form-label">Image 5 URL</label><input class="form-input" id="f_image5" placeholder="https://... (optional)" /></div>
+              <div id="imgPreviewStrip" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
             </div>
 
             <div class="form-section">
@@ -118,11 +122,11 @@
   const categories = await window.AdminProducts.listCategories();
   document.getElementById('f_category').innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
-  document.getElementById('f_image').addEventListener('input', function () {
-    const preview = document.getElementById('imgPreview');
-    if (this.value) { preview.src = this.value; preview.style.display = 'block'; }
-    else { preview.style.display = 'none'; }
-  });
+  function updateImgPreviews() {
+    const urls = ['f_image','f_image2','f_image3','f_image4','f_image5'].map(id => document.getElementById(id).value.trim()).filter(Boolean);
+    document.getElementById('imgPreviewStrip').innerHTML = urls.map(u => `<img src="${u}" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--color-border);" />`).join('');
+  }
+  ['f_image','f_image2','f_image3','f_image4','f_image5'].forEach(id => document.getElementById(id).addEventListener('input', updateImgPreviews));
 
   function updateDiscount() {
     const mrp = Number(document.getElementById('f_mrp').value) || 0;
@@ -159,7 +163,7 @@
       weight: document.getElementById('f_weight').value.trim(),
       warranty: document.getElementById('f_warranty').value.trim(),
       care: document.getElementById('f_care').value.trim(),
-      images: [document.getElementById('f_image').value.trim()],
+      images: ['f_image','f_image2','f_image3','f_image4','f_image5'].map(id => document.getElementById(id).value.trim()).filter(Boolean),
       active: document.getElementById('f_active').checked,
       featured: document.getElementById('f_featured').checked,
       bestseller: document.getElementById('f_bestseller').checked,
