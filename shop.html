@@ -81,12 +81,14 @@
 (async () => {
 SBHComponents.init('shop');
 const data = await window.SBH_FIRESTORE.load();
-let state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1 };
+let state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false };
 const PAGE_SIZE = 8;
+
+function categoryCount(catId) { return data.PRODUCTS.filter(p => p.category === catId).length; }
 
 function filterHTML() {
   const cats = data.CATEGORIES.map(c => `
-    <label class="filter-option"><input type="checkbox" value="${c.id}" onchange="toggleCategory('${c.id}')" ${state.categories.includes(c.id) ? 'checked' : ''}/> ${c.name} <span class="text-muted">(${c.count})</span></label>`).join('');
+    <label class="filter-option"><input type="checkbox" value="${c.id}" onchange="toggleCategory('${c.id}')" ${state.categories.includes(c.id) ? 'checked' : ''}/> ${c.name} <span class="text-muted">(${categoryCount(c.id)})</span></label>`).join('');
   return `
   <div class="filter-block">
     <h4>Category</h4>
@@ -113,39 +115,42 @@ function filterHTML() {
   </div>
   <div class="filter-block">
     <h4>Availability</h4>
-    <label class="filter-option"><input type="checkbox" onchange="state.inStock=this.checked;render();"/> In Stock Only</label>
+    <label class="filter-option"><input type="checkbox" ${state.inStock?'checked':''} onchange="setInStock(this.checked)"/> In Stock Only</label>
   </div>
   <div class="filter-block" style="border-bottom:none;">
     <h4>Rating</h4>
-    ${[4,3,2].map(r => `<label class="filter-option"><input type="radio" name="rating" onchange="state.rating=${r};render();"/> ${'★'.repeat(r)}${'☆'.repeat(5-r)} &amp; Up</label>`).join('')}
+    ${[4,3,2].map(r => `<label class="filter-option"><input type="radio" name="rating" ${state.rating===r?'checked':''} onchange="setRating(${r})"/> ${'★'.repeat(r)}${'☆'.repeat(5-r)} &amp; Up</label>`).join('')}
   </div>
   <button class="btn btn-ghost btn-block" onclick="resetFilters()">Reset Filters</button>
   `;
 }
 
-function toggleCategory(id) {
+window.toggleCategory = function(id) {
   const i = state.categories.indexOf(id);
   if (i >= 0) state.categories.splice(i,1); else state.categories.push(id);
   state.page = 1; render();
-}
-function setPrice(v) { state.price = Number(v); state.page = 1; render(); }
-function resetFilters() { state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1 }; document.getElementById('sortSelect').value='featured'; render(); }
+};
+window.setPrice = function(v) { state.price = Number(v); state.page = 1; render(); };
+window.setInStock = function(checked) { state.inStock = checked; state.page = 1; render(); };
+window.setRating = function(r) { state.rating = r; state.page = 1; render(); };
+window.resetFilters = function() { state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false }; document.getElementById('sortSelect').value='featured'; render(); };
+window.goToPage = function(p) { state.page = p; render(); window.scrollTo({top:0,behavior:'smooth'}); };
 
-function openFilterDrawer(){ document.getElementById('filterDrawer').classList.add('open'); document.getElementById('filterDrawerOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
-function closeFilterDrawer(){ document.getElementById('filterDrawer').classList.remove('open'); document.getElementById('filterDrawerOverlay').classList.remove('open'); document.body.style.overflow=''; }
+window.openFilterDrawer = function(){ document.getElementById('filterDrawer').classList.add('open'); document.getElementById('filterDrawerOverlay').classList.add('open'); document.body.style.overflow='hidden'; };
+window.closeFilterDrawer = function(){ document.getElementById('filterDrawer').classList.remove('open'); document.getElementById('filterDrawerOverlay').classList.remove('open'); document.body.style.overflow=''; };
 
 function getFiltered() {
   let list = data.PRODUCTS.slice();
   if (state.categories.length) list = list.filter(p => state.categories.includes(p.category));
   list = list.filter(p => p.price <= state.price);
-  if (state.rating) list = list.filter(p => p.rating >= state.rating);
+  if (state.rating) list = list.filter(p => (p.rating||0) >= state.rating);
   if (state.inStock) list = list.filter(p => p.stock > 0);
   switch (state.sort) {
     case 'newest': list = list.filter(p=>p.newArrival).concat(list.filter(p=>!p.newArrival)); break;
     case 'price-low': list.sort((a,b) => a.price - b.price); break;
     case 'price-high': list.sort((a,b) => b.price - a.price); break;
-    case 'popularity': list.sort((a,b) => b.reviews - a.reviews); break;
-    case 'rating': list.sort((a,b) => b.rating - a.rating); break;
+    case 'popularity': list.sort((a,b) => (b.reviewCount||0) - (a.reviewCount||0)); break;
+    case 'rating': list.sort((a,b) => (b.rating||0) - (a.rating||0)); break;
     default: list.sort((a,b) => (b.featured?1:0) - (a.featured?1:0));
   }
   return list;
@@ -164,7 +169,7 @@ function render() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   let pagHtml = '';
   for (let i = 1; i <= totalPages; i++) {
-    pagHtml += `<button class="page-btn ${i===state.page?'active':''}" onclick="state.page=${i};render();window.scrollTo({top:0,behavior:'smooth'})">${i}</button>`;
+    pagHtml += `<button class="page-btn ${i===state.page?'active':''}" onclick="goToPage(${i})">${i}</button>`;
   }
   document.getElementById('pagination').innerHTML = totalPages > 1 ? pagHtml : '';
 }
