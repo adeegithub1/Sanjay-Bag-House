@@ -17,13 +17,17 @@
 
 <div id="sbh-header"></div>
 
+<div class="offers-ticker" id="offersTicker" style="display:none;">
+  <div class="offers-ticker-track" id="offersTickerTrack"></div>
+</div>
+
 <main id="main-content">
 
   <!-- SECTION 1: HERO -->
   <section class="hero">
     <div class="container hero-grid">
       <div class="hero-copy">
-        <span class="eyebrow" id="heroEyebrow">New Season Collection</span>
+        <span class="eyebrow" id="heroEyebrow">🔥 New Season Collection</span>
         <h1 class="display-heading" id="heroHeading">Carry What Matters.</h1>
         <p id="heroSubheading">Stylish, durable and reliable bags designed for everyday life, work and travel.</p>
         <div class="hero-actions">
@@ -31,6 +35,7 @@
           <a href="/category.html?slug=travel-bags" class="btn btn-secondary" id="heroBtnSecondary">Explore Bags</a>
         </div>
         <div class="trust-strip-row">
+          <div class="trust-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> All India Shipping</div>
           <div class="trust-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> Cash on Delivery</div>
           <div class="trust-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> Free Delivery ₹999+</div>
           <div class="trust-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> 7-Day Easy Returns</div>
@@ -53,6 +58,19 @@
       <a href="/shop.html" class="view-all-link">View All <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></a>
     </div>
     <div class="cat-grid" id="homeCategoryGrid"></div>
+  </section>
+
+  <!-- SECTION 2.5: FLASH DEALS (real high-discount products, genuine low-stock urgency) -->
+  <section class="flash-deals-section" id="flashDealsSection" style="display:none;">
+    <div class="container">
+      <div class="flash-deals-banner">
+        <div>
+          <h2>⚡ Best Deals Right Now</h2>
+          <p class="sub">Handpicked products with the biggest discounts in store today</p>
+        </div>
+      </div>
+      <div class="product-grid" id="flashDealsGrid"></div>
+    </div>
   </section>
 
   <!-- SECTION 3: BEST SELLERS -->
@@ -213,6 +231,35 @@
 
   const bestSellers = data.PRODUCTS.filter(p => p.bestseller).slice(0,8);
   document.getElementById('bestSellerGrid').innerHTML = bestSellers.map(p => renderProductCard(p)).join('');
+
+  // Flash Deals — genuinely the highest-discount, in-stock products (real data, not fabricated)
+  const flashDeals = data.PRODUCTS
+    .filter(p => p.stock > 0 && p.mrp > p.price)
+    .map(p => ({ ...p, _disc: data.discountPct(p.mrp, p.price) }))
+    .filter(p => p._disc >= 15)
+    .sort((a,b) => b._disc - a._disc)
+    .slice(0, 8);
+  if (flashDeals.length) {
+    document.getElementById('flashDealsGrid').innerHTML = flashDeals.map(p => renderProductCard(p)).join('');
+    document.getElementById('flashDealsSection').style.display = 'block';
+  }
+
+  // Offers ticker — real active coupons only
+  try {
+    const { db } = await import("/js/firebase-init.js");
+    const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+    const snap = await getDocs(collection(db, "coupons"));
+    const today = new Date().toISOString().slice(0,10);
+    const activeCoupons = snap.docs.map(d => ({ code: d.id, ...d.data() }))
+      .filter(c => c.active && (!c.end || today <= c.end) && (!c.start || today >= c.start));
+    if (activeCoupons.length) {
+      const items = activeCoupons.map(c => `
+        <span class="offers-ticker-item">🎁 Use code <strong>${c.code}</strong> for ${c.type === 'Percentage' ? c.value + '% off' : data.formatINR(c.value) + ' off'}${c.minOrder ? ` on orders above ${data.formatINR(c.minOrder)}` : ''}</span>`).join('');
+      // Duplicate items so the scroll loop feels continuous
+      document.getElementById('offersTickerTrack').innerHTML = items + items;
+      document.getElementById('offersTicker').style.display = 'block';
+    }
+  } catch (e) { /* ticker just stays hidden if this fails */ }
 
   // Apply real admin-edited "Why Choose Us" copy + pull real approved reviews, if any
   try {
