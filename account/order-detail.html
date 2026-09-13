@@ -74,7 +74,7 @@ if (!snap.exists() || snap.data().userId !== user.uid) {
         <div class="order-timeline">
           ${steps.map((s,i) => `
             <div class="timeline-step ${i<=activeIdx ? 'done':''}">
-              <div class="t-title">${statusLabel(s)}</div>
+              <div class="t-title">${i===0 ? 'Order Placed' : statusLabel(s)}</div>
               <div class="t-date">${i<=activeIdx ? formatDate(o.createdAt) : 'Pending'}</div>
             </div>`).join('')}
         </div>
