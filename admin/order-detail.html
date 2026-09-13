@@ -97,7 +97,7 @@
   function renderTimeline() {
     const idx = STEPS.includes(o.status) ? STEPS.indexOf(o.status) : (o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded' ? 0 : 5);
     document.getElementById('timelineWrap').innerHTML = STEPS.map((s,i) => `
-      <div class="timeline-step ${i<=idx?'done':''}"><div class="t-title">${window.SBH_statusLabel(s)}</div><div class="t-date">${i<=idx ? formatDate(o.createdAt) : 'Pending'}</div></div>`).join('');
+      <div class="timeline-step ${i<=idx?'done':''}"><div class="t-title">${i===0 ? 'Order Placed' : window.SBH_statusLabel(s)}</div><div class="t-date">${i<=idx ? formatDate(o.createdAt) : 'Pending'}</div></div>`).join('');
   }
   renderTimeline();
 
