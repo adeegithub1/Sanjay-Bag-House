@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brands | Sanjay Bag House Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
+</head>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <div class="admin-page-head">
+        <div><h1>Brands</h1><p>Manage the brand/company names shown on products, with logos and search/filter support.</p></div>
+        <button class="btn btn-primary" onclick="openBrandModal()">+ Add Brand</button>
+      </div>
+      <div class="admin-panel">
+        <div class="dt-wrap">
+          <table class="data-table">
+            <thead><tr><th>Logo</th><th>Name</th><th>Products</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="brandBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="brandModal">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="brandModalTitle">Add Brand</h3><button class="icon-btn" onclick="closeBrandModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Brand Name</label><input class="form-input" id="brandNameInput" placeholder="e.g. Wildcraft" /></div>
+      <div class="form-group"><label class="form-label">Logo Image URL</label><input class="form-input" id="brandLogoInput" placeholder="https://..." /></div>
+      <div id="brandLogoPreview" style="margin-bottom:14px;"></div>
+      <div class="flex justify-between items-center"><span class="body-text">Active</span><label class="toggle"><input type="checkbox" id="brandActiveInput" checked/><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeBrandModal()">Cancel</button><button class="btn btn-primary" onclick="saveBrand()">Save Brand</button></div>
+  </div>
+</div>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script type="module">
+import { db } from "/js/firebase-init.js";
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+(async () => {
+  AdminShell.init('brands', 'Brands');
+
+  const [brandSnap, prodSnap] = await Promise.all([
+    getDocs(collection(db, "brands")),
+    getDocs(collection(db, "products")),
+  ]);
+  const products = prodSnap.docs.map(d => d.data());
+  let brands = brandSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let editingId = null;
+
+  function productCount(brandName) { return products.filter(p => p.brand === brandName).length; }
+
+  function render() {
+    document.getElementById('brandBody').innerHTML = brands.map(b => `
+      <tr>
+        <td>${b.logoUrl ? `<img src="${b.logoUrl}" alt="${b.name}" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid var(--color-border);" />` : `<div style="width:40px;height:40px;border-radius:8px;background:var(--color-secondary);"></div>`}</td>
+        <td><strong>${b.name}</strong></td>
+        <td>${productCount(b.name)} products</td>
+        <td><span class="badge badge-${b.active !== false ? 'success' : 'neutral'}">${b.active !== false ? 'Active' : 'Disabled'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button aria-label="Edit" onclick="openBrandModal('${b.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg></button>
+            <button aria-label="Delete" style="color:var(--color-danger);" onclick="deleteBrand('${b.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+          </div>
+        </td>
+      </tr>`).join('');
+    if (!brands.length) {
+      document.getElementById('brandBody').innerHTML = `<tr><td colspan="5"><div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No brands yet. Click "+ Add Brand" to create one.</p></div></td></tr>`;
+    }
+  }
+
+  window.deleteBrand = function(id) {
+    showConfirmDialog('Delete this brand? Products using it will keep their brand name as plain text.', async () => {
+      try {
+        await deleteDoc(doc(db, "brands", id));
+        brands = brands.filter(b=>b.id!==id);
+        showToast('Brand deleted', 'success');
+        render();
+      } catch (err) { showToast('Could not delete brand.', 'error'); }
+    });
+  };
+  window.openBrandModal = function(id) {
+    editingId = id || null;
+    const b = id ? brands.find(x=>x.id===id) : null;
+    document.getElementById('brandModalTitle').textContent = id ? 'Edit Brand' : 'Add Brand';
+    document.getElementById('brandNameInput').value = b ? b.name : '';
+    document.getElementById('brandLogoInput').value = b ? (b.logoUrl||'') : '';
+    document.getElementById('brandActiveInput').checked = b ? b.active !== false : true;
+    updateBrandLogoPreview();
+    document.getElementById('brandModal').classList.add('open');
+  };
+  window.closeBrandModal = function() { document.getElementById('brandModal').classList.remove('open'); };
+  function updateBrandLogoPreview() {
+    const url = document.getElementById('brandLogoInput').value.trim();
+    document.getElementById('brandLogoPreview').innerHTML = url ? `<img src="${url}" alt="" style="width:60px;height:60px;object-fit:contain;background:#fff;border:1px solid var(--color-border);border-radius:8px;" />` : '';
+  }
+  document.getElementById('brandLogoInput').addEventListener('input', updateBrandLogoPreview);
+
+  window.saveBrand = async function() {
+    const name = document.getElementById('brandNameInput').value.trim();
+    if (!name) { showToast('Please enter a brand name', 'error'); return; }
+    const payload = {
+      name,
+      logoUrl: document.getElementById('brandLogoInput').value.trim(),
+      active: document.getElementById('brandActiveInput').checked,
+    };
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, "brands", editingId), payload);
+        Object.assign(brands.find(b=>b.id===editingId), payload);
+        showToast('Brand updated successfully', 'success');
+      } else {
+        const ref = await addDoc(collection(db, "brands"), payload);
+        brands.push({ id: ref.id, ...payload });
+        showToast('Brand added successfully', 'success');
+      }
+      closeBrandModal();
+      render();
+    } catch (err) { showToast('Could not save brand.', 'error'); }
+  };
+  render();
+})();
+</script>
+</body>
+</html>
