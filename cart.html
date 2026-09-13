@@ -104,6 +104,7 @@ async function render() {
         <div class="summary-row"><span>Discount</span><span style="color:var(--color-success);">− ${data.formatINR(discount)}</span></div>
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
         <div class="summary-row total"><span>Total</span><span>${data.formatINR(total)}</span></div>
+        ${discount > 0 ? `<div style="background:var(--color-success-bg);color:var(--color-success);border-radius:8px;padding:9px 12px;margin-top:10px;font-size:13px;font-weight:700;text-align:center;">🎉 You saved ${data.formatINR(discount)} on this order!</div>` : ''}
         <a href="/checkout.html" class="btn btn-primary btn-block" style="margin-top:16px;">Proceed to Checkout</a>
       </div>
     </div>
