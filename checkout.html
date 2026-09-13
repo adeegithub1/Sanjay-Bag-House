@@ -48,6 +48,30 @@ if (!user) {
 const items = await window.SBHStore.cartDetailed();
 const profile = await SBHAuth.getCustomerProfile(user.uid);
 const data = window.SBH_DATA;
+
+window.autofillFromPincode = async function(val) {
+  const msgEl = document.getElementById('pincodeAutofillMsg');
+  if (!/^[1-9][0-9]{5}$/.test(val)) { msgEl.textContent = ''; return; }
+  msgEl.textContent = 'Looking up city/state...';
+  try {
+    const res = await fetch(`https://api.postalpincode.in/pincode/${val}`);
+    const result = await res.json();
+    const office = result?.[0]?.Status === 'Success' ? result[0].PostOffice?.[0] : null;
+    if (office) {
+      document.getElementById('ck_city').value = office.District || office.Block || '';
+      const stateSelect = document.getElementById('ck_state');
+      const match = Array.from(stateSelect.options).find(o => o.value.toLowerCase() === (office.State||'').toLowerCase());
+      if (match) stateSelect.value = match.value;
+      msgEl.textContent = `✓ ${office.District}, ${office.State}`;
+      msgEl.style.color = 'var(--color-success)';
+    } else {
+      msgEl.textContent = 'Could not auto-detect — please fill city/state manually.';
+      msgEl.style.color = '';
+    }
+  } catch (e) {
+    msgEl.textContent = ''; // Silent fail — auto-fill is a convenience, not required
+  }
+};
 let storedCoupon = null;
 try { storedCoupon = JSON.parse(localStorage.getItem('sbh_coupon')); } catch (e) {}
 
@@ -69,7 +93,9 @@ if (!shippingSettings.codEnabled) {
     </div>`;
 } else {
   const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
+  const mrpTotal = items.reduce((s,i)=>s+(i.mrp||i.price)*i.qty,0);
   const couponDiscount = storedCoupon ? storedCoupon.amount : 0;
+  const totalSavings = (mrpTotal - subtotal) + couponDiscount;
   const shipping = subtotal > shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
   const codFee = shippingSettings.codFee || 0;
   const total = subtotal - couponDiscount + shipping + codFee;
@@ -101,7 +127,7 @@ if (!shippingSettings.codEnabled) {
           <div class="form-group"><label class="form-label">State <span class="req">*</span></label>
             <select required id="ck_state" class="form-select"><option value="">Select State</option><option>Maharashtra</option><option>Delhi</option><option>Karnataka</option><option>Gujarat</option><option>Rajasthan</option><option>Uttar Pradesh</option><option>Tamil Nadu</option></select>
           </div>
-          <div class="form-group"><label class="form-label">PIN Code <span class="req">*</span></label><input required id="ck_pincode" pattern="[0-9]{6}" class="form-input" placeholder="6-digit PIN" /></div>
+          <div class="form-group"><label class="form-label">PIN Code <span class="req">*</span></label><input required id="ck_pincode" pattern="[0-9]{6}" class="form-input" placeholder="6-digit PIN" oninput="autofillFromPincode(this.value)" /><p class="form-hint" id="pincodeAutofillMsg"></p></div>
         </div>
       </div>
 
@@ -133,6 +159,7 @@ if (!shippingSettings.codEnabled) {
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'FREE' : data.formatINR(shipping)}</span></div>
         ${codFee > 0 ? `<div class="summary-row"><span>COD Fee</span><span>${data.formatINR(codFee)}</span></div>` : ''}
         <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
+        ${totalSavings > 0 ? `<div style="background:var(--color-success-bg);color:var(--color-success);border-radius:8px;padding:9px 12px;margin-top:10px;font-size:13px;font-weight:700;text-align:center;">🎉 You saved ${data.formatINR(totalSavings)} on this order!</div>` : ''}
         ${codBlocked ? `<p class="form-error" style="margin-top:8px;">${belowCodMin ? `Minimum order for COD is ${data.formatINR(shippingSettings.codMinOrder)}.` : `Maximum order for COD is ${data.formatINR(shippingSettings.codMaxOrder)}.`}</p>` : ''}
         <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn" ${codBlocked ? 'disabled' : ''}>Place Order (COD)</button>
         <p class="caption-text" style="text-align:center;margin-top:10px;">🔒 Your information is safe and secure</p>
