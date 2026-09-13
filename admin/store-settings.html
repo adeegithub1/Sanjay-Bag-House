@@ -27,6 +27,10 @@
 
       <div id="storePanelBranding">
         <div class="form-section">
+          <h3>Store Name</h3>
+          <div class="form-group"><label class="form-label">Name shown in header, footer &amp; menu</label><input id="bs_storeName" class="form-input" placeholder="e.g. New Sanjay Bag House" /></div>
+        </div>
+        <div class="form-section">
           <h3>Logo &amp; Favicon</h3>
           <p class="desc">Your logo appears in the header. Paste image URLs below (real file upload isn't available — Firebase file storage now requires a paid plan, so this uses hosted image links instead, same as your product photos).</p>
           <div class="form-row form-row-2">
@@ -75,7 +79,7 @@
           </div>
           <div class="form-group"><label class="form-label">Email Address</label><input id="cs_email" class="form-input" placeholder="you@yourdomain.com" /></div>
           <div class="form-group"><label class="form-label">Store Address</label><textarea id="cs_address" class="form-textarea" placeholder="Your store's full address"></textarea></div>
-          <div class="form-group"><label class="form-label">Google Maps URL</label><input id="cs_maps" class="form-input" placeholder="https://maps.google.com/..." /></div>
+          <div class="form-group"><label class="form-label">Google Maps Embed URL</label><input id="cs_maps" class="form-input" placeholder="https://www.google.com/maps/embed?pb=..." /><p class="form-hint">On Google Maps: search your address → Share → Embed a map → copy the "src" link from the code shown, and paste it here (not the regular share link).</p></div>
           <div class="form-group"><label class="form-label">Business Hours</label><input id="cs_hours" class="form-input" placeholder="e.g. Mon-Sat: 10:00 AM - 8:00 PM" /></div>
         </div>
         <button class="btn btn-primary" id="cs_saveBtn" onclick="saveContactPanel()">Save Changes</button>
@@ -116,6 +120,7 @@
   AdminShell.init('store-settings', 'Store Settings');
 
   const branding = await window.SBHStoreSettings.loadBrandingSettings();
+  document.getElementById('bs_storeName').value = branding.storeName;
   document.getElementById('bs_logoUrl').value = branding.logoUrl;
   document.getElementById('bs_faviconUrl').value = branding.faviconUrl;
   updateLogoPreview();
@@ -143,6 +148,7 @@
     btn.disabled = true; btn.textContent = 'Saving...';
     try {
       await window.SBHStoreSettings.saveBrandingSettings({
+        storeName: document.getElementById('bs_storeName').value.trim(),
         logoUrl: document.getElementById('bs_logoUrl').value.trim(),
         faviconUrl: document.getElementById('bs_faviconUrl').value.trim(),
       });
