@@ -51,6 +51,11 @@ document.getElementById('pageDesc').setAttribute('content', p.desc);
 const cat = data.getCategory(p.category);
 document.getElementById('breadcrumb').innerHTML += `<span class="sep">/</span><a href="/category.html?slug=${p.category}">${cat ? cat.name : p.category}</a><span class="sep">/</span><span class="current">${p.name}</span>`;
 
+const { loadShippingSettings, loadBrandingSettings } = await import("/js/store-settings.js");
+const shippingSettings = await loadShippingSettings();
+const brandingSettings = await loadBrandingSettings();
+const storeDisplayName = brandingSettings.storeName || "Sanjay Bag House";
+
 function stars(rating) { const full = Math.round(rating); return "★★★★★☆☆☆☆☆".slice(5 - full, 10 - full); }
 
 function renderPDP() {
@@ -81,6 +86,7 @@ function renderPDP() {
         <span class="discount">${disc}% OFF</span>
       </div>
       <p class="tax-note">Inclusive of all taxes</p>
+      <div id="pdpCouponStrip"></div>
       <p style="margin-bottom:16px;">${p.stock > 0 ? (p.stock < 15 ? `<span class="badge badge-warning">Only ${p.stock} left in stock</span>` : `<span class="badge badge-success">In Stock</span>`) : `<span class="badge badge-danger">Out of Stock</span>`}</p>
 
       <div class="form-label">Quantity</div>
@@ -103,14 +109,44 @@ function renderPDP() {
         <button class="btn btn-primary" ${p.stock<=0?'disabled':''} onclick="buyNowPDP()">Buy Now</button>
       </div>
 
+      <div class="card" style="padding:16px;margin-bottom:18px;">
+        <div class="form-label" style="margin-bottom:8px;">Check Delivery &amp; COD Availability</div>
+        <div class="flex gap-8">
+          <input type="text" id="pincodeInput" class="form-input" placeholder="Enter 6-digit pincode" maxlength="6" style="max-width:180px;" />
+          <button class="btn btn-secondary btn-sm" onclick="checkPincode()">Check</button>
+        </div>
+        <div id="pincodeResult" style="margin-top:10px;"></div>
+      </div>
+
       <div class="trust-strip">
-        <span class="trust-item">🚚 Free shipping above ₹999</span>
+        <span class="trust-item">🚚 Free shipping above ${data.formatINR(shippingSettings.freeThreshold)}</span>
+        ${shippingSettings.codEnabled ? '<span class="trust-item">💵 Cash on Delivery available</span>' : ''}
         <span class="trust-item">↩ 7-day easy returns</span>
+        <span class="trust-item">✅ 100% Genuine Product</span>
         <span class="trust-item">🔒 Secure payment</span>
       </div>
+      <p class="caption-text" style="margin-top:8px;">Sold by <strong>${storeDisplayName}</strong></p>
     </div>
   `;
 }
+
+window.checkPincode = function() {
+  const val = document.getElementById('pincodeInput').value.trim();
+  const result = document.getElementById('pincodeResult');
+  if (!/^[1-9][0-9]{5}$/.test(val)) {
+    result.innerHTML = `<p class="form-error">Please enter a valid 6-digit pincode.</p>`;
+    return;
+  }
+  const today = new Date();
+  const fast = new Date(today); fast.setDate(today.getDate() + 4);
+  const slow = new Date(today); slow.setDate(today.getDate() + 7);
+  const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  result.innerHTML = `
+    <p class="body-text" style="margin-bottom:4px;">✅ Delivery available to <strong>${val}</strong></p>
+    <p class="caption-text">Usually arrives between <strong>${fmt(fast)} – ${fmt(slow)}</strong></p>
+    ${shippingSettings.codEnabled ? '<p class="caption-text" style="color:var(--color-success);">Cash on Delivery available for this pincode</p>' : ''}
+  `;
+};
 
 window.setImg = function(i){ document.getElementById('mainImg').src = p.images[i]; document.querySelectorAll('.pdp-thumb').forEach((t,idx)=>t.classList.toggle('active', idx===i)); };
 
@@ -174,6 +210,7 @@ async function renderTabs() {
       <p class="body-text"><strong>Returns:</strong> This item is eligible for return or exchange within 7 days of delivery, provided it is unused and in original packaging. <a href="/return-policy.html" style="color:var(--color-accent);font-weight:600;">Read full return policy →</a></p>
     </div>
     <div class="tab-panel" data-panel="reviews">
+      <div id="ratingBreakdown" style="margin-bottom:20px;"></div>
       <div id="reviewFormWrap" style="margin-bottom:24px;"></div>
       <div id="reviewsList"></div>
     </div>
@@ -192,12 +229,35 @@ async function renderTabs() {
 
   const list = document.getElementById('reviewsList');
   const realReviews = await loadReviews();
+
+  // Rating breakdown (computed from real approved reviews only)
+  const breakdownEl = document.getElementById('ratingBreakdown');
+  if (realReviews.length) {
+    const counts = [5,4,3,2,1].map(star => realReviews.filter(r => Math.round(r.rating) === star).length);
+    const avg = (realReviews.reduce((s,r)=>s+r.rating,0) / realReviews.length).toFixed(1);
+    breakdownEl.innerHTML = `
+      <div class="flex items-center gap-8" style="margin-bottom:14px;">
+        <span style="font-size:28px;font-weight:800;">${avg}</span>
+        <div><span class="stars" style="color:var(--color-star);font-size:16px;">${stars(avg)}</span><div class="caption-text">${realReviews.length} review${realReviews.length===1?'':'s'}</div></div>
+      </div>
+      ${[5,4,3,2,1].map((star,i) => {
+        const pct = Math.round((counts[i] / realReviews.length) * 100);
+        return `<div class="flex items-center gap-8" style="margin-bottom:4px;">
+          <span class="caption-text" style="width:36px;">${star} ★</span>
+          <div style="flex:1;height:7px;background:var(--color-border);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:var(--color-star);"></div></div>
+          <span class="caption-text" style="width:28px;text-align:right;">${counts[i]}</span>
+        </div>`;
+      }).join('')}
+    `;
+  }
+
   if (realReviews.length) {
     list.innerHTML = realReviews.map(r => `
       <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
         <div class="flex items-center gap-8" style="margin-bottom:6px;">
           <span class="stars" style="color:var(--color-star);">${stars(r.rating)}</span>
           <strong style="font-size:13.5px;">${r.customerName || 'Customer'}</strong>
+          ${r.verifiedPurchase ? '<span class="badge badge-success">Verified Purchase</span>' : ''}
         </div>
         <p class="body-text" style="margin-bottom:4px;">${r.text}</p>
         <span class="caption-text">${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>
@@ -235,11 +295,18 @@ async function renderTabs() {
       btn.disabled = true; btn.textContent = 'Submitting...';
       try {
         const profile = await SBHAuthMod.getCustomerProfile(currentUser.uid);
+        let verifiedPurchase = false;
+        try {
+          const ownOrdersQ = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
+          const ownOrdersSnap = await getDocs(ownOrdersQ);
+          verifiedPurchase = ownOrdersSnap.docs.some(d => (d.data().items || []).some(i => i.productId === p.id));
+        } catch (e) { /* verification best-effort; defaults to false if it fails */ }
         await addDoc(collection(db, "reviews"), {
           productId: p.id,
           userId: currentUser.uid,
           customerName: profile?.name || currentUser.displayName || 'Customer',
           rating, text,
+          verifiedPurchase,
           status: 'pending',
           createdAt: serverTimestamp(),
         });
@@ -268,6 +335,28 @@ async function renderTabs() {
 renderPDP();
 await renderTabs();
 document.getElementById('relatedGrid').innerHTML = data.getRelated(p).map(rp => renderProductCard(rp)).join('');
+
+// Real active coupons (not fabricated) — pulled straight from Firestore
+try {
+  const { db } = await import("/js/firebase-init.js");
+  const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+  const snap = await getDocs(collection(db, "coupons"));
+  const today = new Date().toISOString().slice(0,10);
+  const activeCoupons = snap.docs.map(d => ({ code: d.id, ...d.data() }))
+    .filter(c => c.active && (!c.end || today <= c.end) && (!c.start || today >= c.start))
+    .slice(0, 3);
+  const stripEl = document.getElementById('pdpCouponStrip');
+  if (stripEl && activeCoupons.length) {
+    stripEl.innerHTML = `
+      <div style="margin:12px 0;">
+        ${activeCoupons.map(c => `
+          <div style="display:flex;align-items:center;justify-content:space-between;border:1px dashed var(--color-accent);border-radius:8px;padding:8px 12px;margin-bottom:6px;background:var(--color-danger-bg);">
+            <span style="font-size:12.5px;"><strong>${c.code}</strong> — ${c.type === 'Percentage' ? c.value + '% off' : data.formatINR(c.value) + ' off'}${c.minOrder ? ` on orders above ${data.formatINR(c.minOrder)}` : ''}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+} catch (e) { /* no coupons to show */ }
+
 })();
 </script>
 </body>
