@@ -39,7 +39,7 @@
               <div class="form-group"><label class="form-label">Product Name <span class="req">*</span></label><input required class="form-input" id="f_name" placeholder="e.g. Urban Laptop Backpack" /></div>
               <div class="form-row form-row-2">
                 <div class="form-group"><label class="form-label">SKU <span class="req">*</span></label><input required class="form-input" id="f_sku" placeholder="e.g. SBH-BP-106" /></div>
-                <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="f_brand" value="Sanjay Bag House" /></div>
+                <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="f_brand" list="brandList" placeholder="Type or select a brand" /><datalist id="brandList"></datalist></div>
               </div>
               <div class="form-row form-row-2">
                 <div class="form-group"><label class="form-label">Category <span class="req">*</span></label>
@@ -121,6 +121,12 @@
   AdminShell.init('products', 'Add Product');
   const categories = await window.AdminProducts.listCategories();
   document.getElementById('f_category').innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js").then(async (fs) => {
+    const { db } = await import("/js/firebase-init.js");
+    const snap = await fs.getDocs(fs.collection(db, "brands"));
+    document.getElementById('brandList').innerHTML = snap.docs.map(d => `<option value="${d.data().name}">`).join('');
+  }).catch(() => {});
 
   function updateImgPreviews() {
     const urls = ['f_image','f_image2','f_image3','f_image4','f_image5'].map(id => document.getElementById(id).value.trim()).filter(Boolean);
