@@ -196,9 +196,18 @@
         if (el) el.innerHTML = "";
       });
 
-      // Apply real store logo + favicon (falls back to the text wordmark / default icon if not set)
+      // Apply real store logo + favicon + store name (falls back to defaults if not set)
       import("/js/store-settings.js").then(async (mod) => {
         const b = await mod.loadBrandingSettings();
+        if (b.storeName) {
+          document.querySelectorAll(".logo-text-wrap").forEach((el) => {
+            // Only replace the first text node (store name), leave any <small> tagline as-is
+            for (const node of el.childNodes) {
+              if (node.nodeType === 3 && node.textContent.trim()) { node.textContent = b.storeName; break; }
+            }
+          });
+          document.querySelectorAll("[data-store-name]").forEach(el => el.textContent = b.storeName);
+        }
         if (b.logoUrl) {
           document.querySelectorAll("a.logo, span.logo").forEach((el) => {
             if (el.querySelector(".sbh-logo-img")) return;
@@ -206,7 +215,7 @@
             if (textWrap) textWrap.style.display = "none";
             const img = document.createElement("img");
             img.src = b.logoUrl;
-            img.alt = "Sanjay Bag House";
+            img.alt = b.storeName || "Sanjay Bag House";
             img.className = "sbh-logo-img";
             el.insertBefore(img, el.firstChild);
           });
@@ -216,6 +225,23 @@
           if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
           link.href = b.faviconUrl;
         }
+      }).catch(() => {});
+
+      // Floating WhatsApp button (shown only if a number is set in admin)
+      import("/js/store-settings.js").then(async (mod) => {
+        const s = await mod.loadContactSettings();
+        const number = (s.whatsapp || "").replace(/[^0-9]/g, "");
+        if (!number) return;
+        if (document.getElementById("sbhWhatsappFloat")) return;
+        const a = document.createElement("a");
+        a.id = "sbhWhatsappFloat";
+        a.href = `https://wa.me/${number}?text=${encodeURIComponent("Hi! I have a question about your products.")}`;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.className = "sbh-whatsapp-float";
+        a.setAttribute("aria-label", "Chat on WhatsApp");
+        a.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2Zm5.8 14.09c-.24.68-1.4 1.32-1.93 1.4-.5.08-1.13.11-1.82-.12-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.36-.14-.2-1.18-1.57-1.18-3 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2.01.89 2.15.07.15.11.31.02.5-.09.18-.14.3-.28.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.57.16.28.71 1.17 1.53 1.89 1.05.94 1.94 1.23 2.22 1.37.28.14.44.12.6-.07.16-.19.69-.8.87-1.07.18-.28.36-.23.6-.14.24.09 1.54.73 1.81.86.27.14.44.2.51.31.07.12.07.68-.17 1.36Z"/></svg>`;
+        document.body.appendChild(a);
       }).catch(() => {});
 
       // Apply real social media links (hides any icon that has no URL set, rather than leaving a dead link)
