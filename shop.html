@@ -81,10 +81,12 @@
 (async () => {
 SBHComponents.init('shop');
 const data = await window.SBH_FIRESTORE.load();
-let state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false };
+let state = { categories: [], brands: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false };
 const PAGE_SIZE = 8;
 
 function categoryCount(catId) { return data.PRODUCTS.filter(p => p.category === catId).length; }
+const distinctBrands = [...new Set(data.PRODUCTS.map(p => p.brand).filter(Boolean))].sort();
+function brandCount(name) { return data.PRODUCTS.filter(p => p.brand === name).length; }
 
 function filterHTML() {
   const cats = data.CATEGORIES.map(c => `
@@ -101,7 +103,8 @@ function filterHTML() {
   </div>
   <div class="filter-block">
     <h4>Brand</h4>
-    <label class="filter-option"><input type="checkbox" checked disabled/> Sanjay Bag House</label>
+    ${distinctBrands.length ? distinctBrands.map(b => `
+      <label class="filter-option"><input type="checkbox" value="${b}" onchange="toggleBrand('${b.replace(/'/g,"\\'")}')" ${state.brands.includes(b) ? 'checked' : ''}/> ${b} <span class="text-muted">(${brandCount(b)})</span></label>`).join('') : '<p class="caption-text">No brands set yet.</p>'}
   </div>
   <div class="filter-block">
     <h4>Color</h4>
@@ -130,10 +133,15 @@ window.toggleCategory = function(id) {
   if (i >= 0) state.categories.splice(i,1); else state.categories.push(id);
   state.page = 1; render();
 };
+window.toggleBrand = function(name) {
+  const i = state.brands.indexOf(name);
+  if (i >= 0) state.brands.splice(i,1); else state.brands.push(name);
+  state.page = 1; render();
+};
 window.setPrice = function(v) { state.price = Number(v); state.page = 1; render(); };
 window.setInStock = function(checked) { state.inStock = checked; state.page = 1; render(); };
 window.setRating = function(r) { state.rating = r; state.page = 1; render(); };
-window.resetFilters = function() { state = { categories: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false }; document.getElementById('sortSelect').value='featured'; render(); };
+window.resetFilters = function() { state = { categories: [], brands: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false }; document.getElementById('sortSelect').value='featured'; render(); };
 window.goToPage = function(p) { state.page = p; render(); window.scrollTo({top:0,behavior:'smooth'}); };
 
 window.openFilterDrawer = function(){ document.getElementById('filterDrawer').classList.add('open'); document.getElementById('filterDrawerOverlay').classList.add('open'); document.body.style.overflow='hidden'; };
@@ -142,6 +150,7 @@ window.closeFilterDrawer = function(){ document.getElementById('filterDrawer').c
 function getFiltered() {
   let list = data.PRODUCTS.slice();
   if (state.categories.length) list = list.filter(p => state.categories.includes(p.category));
+  if (state.brands.length) list = list.filter(p => state.brands.includes(p.brand));
   list = list.filter(p => p.price <= state.price);
   if (state.rating) list = list.filter(p => (p.rating||0) >= state.rating);
   if (state.inStock) list = list.filter(p => p.stock > 0);
