@@ -26,7 +26,7 @@ async function saveContactSettings(data) {
   _cache = { ...DEFAULTS, ...data };
 }
 
-const BRANDING_DEFAULTS = { logoUrl: "", faviconUrl: "" };
+const BRANDING_DEFAULTS = { logoUrl: "", faviconUrl: "", storeName: "" };
 let _brandingCache = null;
 
 async function loadBrandingSettings() {
