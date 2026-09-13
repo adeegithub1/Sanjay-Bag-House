@@ -7,6 +7,7 @@
     { key: 'dashboard', label: 'Dashboard', href: '/admin/index.html', icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>' },
     { key: 'products', label: 'Products', href: '/admin/products.html', icon: '<path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2M3 8l1.5 11a2 2 0 0 0 2 1.8h11a2 2 0 0 0 2-1.8L21 8M3 8h18"/>' },
     { key: 'categories', label: 'Categories', href: '/admin/categories.html', icon: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>' },
+    { key: 'brands', label: 'Brands', href: '/admin/brands.html', icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>' },
     { key: 'orders', label: 'Orders', href: '/admin/orders.html', icon: '<path d="M9 2h6l1 4H8l1-4Z"/><path d="M4 6h16l-1.5 14a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 6Z"/>' },
     { key: 'inventory', label: 'Inventory', href: '/admin/inventory.html', icon: '<path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/><path d="M4 7l8 4 8-4M12 11v10"/>' },
     { key: 'customers', label: 'Customers', href: '/admin/customers.html', icon: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><circle cx="18" cy="8" r="2.8"/><path d="M16 13.5c2.8.4 5 2.9 5 6.5"/>' },
