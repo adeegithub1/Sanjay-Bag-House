@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /checkout.html
+Disallow: /cart.html
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /forgot-password.html
+Disallow: /order-success.html
+Disallow: /order-failed.html
+
+Sitemap: https://sanjaybaghouse.in/sitemap.xml
