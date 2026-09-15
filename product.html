@@ -48,6 +48,37 @@ let qty = 1;
 document.title = p.name + " | Sanjay Bag House";
 document.getElementById('pageTitle').textContent = p.name + " | Sanjay Bag House";
 document.getElementById('pageDesc').setAttribute('content', p.desc);
+
+// Structured data (Product/Offer/AggregateRating) — built only from real product
+// data. AggregateRating is omitted entirely when reviewCount is 0, so it never
+// claims reviews that don't exist (matches every other rating display on the site).
+const jsonLd = {
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": p.name,
+  "image": p.images,
+  "description": p.desc,
+  "sku": p.sku,
+  "brand": { "@type": "Brand", "name": p.brand || "Sanjay Bag House" },
+  "offers": {
+    "@type": "Offer",
+    "url": window.location.href,
+    "priceCurrency": "INR",
+    "price": p.price,
+    "availability": p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+  },
+};
+if (p.rating && p.reviewCount) {
+  jsonLd.aggregateRating = {
+    "@type": "AggregateRating",
+    "ratingValue": p.rating,
+    "reviewCount": p.reviewCount,
+  };
+}
+const ldScript = document.createElement('script');
+ldScript.type = 'application/ld+json';
+ldScript.textContent = JSON.stringify(jsonLd);
+document.head.appendChild(ldScript);
 const cat = data.getCategory(p.category);
 document.getElementById('breadcrumb').innerHTML += `<span class="sep">/</span><a href="/category.html?slug=${p.category}">${cat ? cat.name : p.category}</a><span class="sep">/</span><span class="current">${p.name}</span>`;
 
