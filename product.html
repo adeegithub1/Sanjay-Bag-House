@@ -42,7 +42,11 @@
 SBHComponents.init('shop');
 const data = await window.SBH_FIRESTORE.load();
 const slug = new URLSearchParams(window.location.search).get('slug');
-const p = data.getProduct(slug) || data.PRODUCTS[0];
+const p = data.getProduct(slug);
+if (!p) {
+  window.location.href = '/404.html';
+  return;
+}
 let qty = 1;
 
 document.title = p.name + " | Sanjay Bag House";
@@ -208,14 +212,7 @@ window.closeImageZoom = function() {
 };
 window.changeQty = function(d){ qty = Math.max(1, Math.min(p.stock, qty+d)); document.getElementById('qtyVal').textContent = qty; };
 window.addToCartPDP = function(){ window.SBHStore.addToCart(p.id, qty); showToast('Product added to cart','success'); };
-window.buyNowPDP = function(){
-  // "Buy Now" is a single-item express purchase — it must NOT touch the
-  // shared cart in localStorage. We stash just this product/qty in
-  // sessionStorage and flag the checkout page via ?buynow=1, so checkout
-  // builds its order from only this item instead of the whole persisted cart.
-  sessionStorage.setItem('sbh_buynow', JSON.stringify({ productId: p.id, qty }));
-  window.location.href = '/checkout.html?buynow=1';
-};
+window.buyNowPDP = function(){ window.SBHStore.addToCart(p.id, qty); window.location.href = '/checkout.html'; };
 window.toggleWishlistPDP = function(){
   const added = window.SBHStore.toggleWishlist(p.id);
   showToast(added?'Added to wishlist':'Removed from wishlist', added?'success':'default');
@@ -294,10 +291,10 @@ async function renderTabs() {
       <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
         <div class="flex items-center gap-8" style="margin-bottom:6px;">
           <span class="stars" style="color:var(--color-star);">${stars(r.rating)}</span>
-          <strong style="font-size:13.5px;">${r.customerName || 'Customer'}</strong>
+          <strong style="font-size:13.5px;">${escapeHtml(r.customerName || 'Customer')}</strong>
           ${r.verifiedPurchase ? '<span class="badge badge-success">Verified Purchase</span>' : ''}
         </div>
-        <p class="body-text" style="margin-bottom:4px;">${r.text}</p>
+        <p class="body-text" style="margin-bottom:4px;">${escapeHtml(r.text)}</p>
         <span class="caption-text">${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>
       </div>`).join('');
   } else {
