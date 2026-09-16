@@ -85,8 +85,8 @@
   document.getElementById('itemsBody').innerHTML = o.items.map(i => `
     <tr><td><img src="${i.image}" alt="${i.name}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;"/></td><td>${i.name}</td><td>${i.sku}</td><td>${i.qty}</td><td>${formatINR(i.price)}</td><td>${formatINR(i.lineTotal || i.price*i.qty)}</td></tr>`).join('');
 
-  document.getElementById('custInfo').innerHTML = `<p class="body-text" style="margin-bottom:4px;"><strong>${o.address?.name || '—'}</strong></p><p class="text-muted" style="font-size:13px;">📞 ${o.address?.phone || '—'}</p><p class="text-muted" style="font-size:13px;">✉️ ${o.customerEmail || '—'}</p>`;
-  document.getElementById('shipInfo').innerHTML = `<p class="body-text">${o.address?.line1 || ''}${o.address?.line2 ? ', ' + o.address.line2 : ''}</p><p class="text-muted" style="font-size:13px;">${o.address?.city || ''}, ${o.address?.state || ''} ${o.address?.pincode || ''}</p>`;
+  document.getElementById('custInfo').innerHTML = `<p class="body-text" style="margin-bottom:4px;"><strong>${escapeHtml(o.address?.name || '—')}</strong></p><p class="text-muted" style="font-size:13px;">📞 ${escapeHtml(o.address?.phone || '—')}</p><p class="text-muted" style="font-size:13px;">✉️ ${escapeHtml(o.customerEmail || '—')}</p>`;
+  document.getElementById('shipInfo').innerHTML = `<p class="body-text">${escapeHtml(o.address?.line1 || '')}${o.address?.line2 ? ', ' + escapeHtml(o.address.line2) : ''}</p><p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.city || '')}, ${escapeHtml(o.address?.state || '')} ${escapeHtml(o.address?.pincode || '')}</p>`;
   document.getElementById('paySummary').innerHTML = `
     <div class="summary-row"><span>Subtotal</span><span>${formatINR(o.subtotal)}</span></div>
     <div class="summary-row"><span>Shipping</span><span>${o.shipping===0?'FREE':formatINR(o.shipping)}</span></div>
