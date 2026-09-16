@@ -56,6 +56,7 @@ wireAccountNavLogout();
     document.getElementById('profName').value = profile?.name || user.displayName || '';
     document.getElementById('profPhone').value = profile?.phone || '';
     document.getElementById('profEmail').value = user.email || '';
+    wireAccountNavAdminLink(user);
 
     document.getElementById('profileForm').addEventListener('submit', async (e) => {
       e.preventDefault();
