@@ -7,8 +7,9 @@
      3. If signed in but NOT an admin -> sign out + redirect + show a message
      4. Only if the admin custom claim is present does the page render
 
-   The admin claim is set server-side only (see functions/setAdminClaim.js)
-   — it can never be forged from the browser, unlike a Firestore field.
+   Admin status is a document at admins/{uid} in Firestore — clients can
+   never write to that collection (see firestore.rules), so it can't be
+   forged from the browser even though checking it is just a normal read.
 
    To avoid a flash of admin content before the check finishes, admin
    pages should keep <body> hidden (e.g. `body{visibility:hidden}` in
