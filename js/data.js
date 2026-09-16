@@ -156,4 +156,20 @@
     formatINR(n) { return "₹" + n.toLocaleString("en-IN"); },
     discountPct(mrp, price) { return Math.round(((mrp - price) / mrp) * 100); },
   };
+
+  // Escapes user-supplied text (review content, checkout name/address, etc.)
+  // before it's interpolated into innerHTML anywhere on the site. Without
+  // this, a customer could type e.g. `<img src=x onerror=...>` as their
+  // checkout name and have it execute in an ADMIN's browser session when
+  // they open that order in the admin dashboard — always escape untrusted
+  // strings before putting them in a template literal that becomes innerHTML.
+  window.escapeHtml = function (str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
 })();
