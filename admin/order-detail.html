@@ -3,67 +3,70 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Order Details | Sanjay Bag House</title>
+<title>Order Details | Sanjay Bag House Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css" />
 <link rel="stylesheet" href="/css/admin.css" />
+<style>html:not(.admin-authed) .admin-shell{display:none}</style>
 </head>
-<body>
-<div id="sbh-header"></div>
-<main class="container">
-  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account/orders.html">Orders</a><span class="sep">/</span><span class="current" id="crumbId">Order</span></nav>
-  <div id="detailWrap"></div>
-</main>
-<div id="sbh-footer"></div>
+<body class="admin-body">
+<script type="module" src="/js/admin-guard.js"></script>
+<div class="admin-shell">
+  <div id="admin-sidebar"></div>
+  <div class="admin-main">
+    <div id="admin-topbar"></div>
+    <div class="admin-content">
+      <nav class="breadcrumb"><a href="/admin/index.html">Dashboard</a><span class="sep">/</span><a href="/admin/orders.html">Orders</a><span class="sep">/</span><span class="current" id="crumbId">Order</span></nav>
+      <div class="admin-page-head"><div><h1 id="pageTitle">Order</h1><p>View order items, customer &amp; shipping details, and update status.</p></div></div>
+      <div id="detailWrap"></div>
+    </div>
+  </div>
+</div>
+
 <script src="/js/data.js"></script>
 <script src="/js/store.js"></script>
-<script src="/js/components.js"></script>
+<script src="/js/admin-shell.js"></script>
+<script type="module" src="/js/admin-orders.js"></script>
 <script type="module">
-import SBHAuth from "/js/auth.js";
-import { db } from "/js/firebase-init.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+(async () => {
+  AdminShell.init('orders', 'Order Details');
 
-SBHComponents.init('');
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+  function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
+  function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
-const user = await SBHAuth.getCurrentUser();
-if (!user) {
-  window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
-} else {
+  const id = new URLSearchParams(window.location.search).get('id');
+  const o = id ? await window.AdminOrders.getOne(id) : null;
 
-function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
-function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
-function statusLabel(v) {
-  const map = { pending:'Pending', confirmed:'Confirmed', processing:'Processing', packed:'Packed', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned', refunded:'Refunded' };
-  return map[v] || v;
-}
+  if (!o) {
+    document.getElementById('detailWrap').innerHTML = `<div class="empty-state" style="padding:60px 20px;"><h3>Order not found</h3><p>This order doesn't exist.</p><a href="/admin/orders.html" class="btn btn-primary">Back to Orders</a></div>`;
+    return;
+  }
 
-const id = new URLSearchParams(window.location.search).get('id');
-const snap = await getDoc(doc(db, "orders", id));
-
-if (!snap.exists() || snap.data().userId !== user.uid) {
-  document.getElementById('detailWrap').innerHTML = `<div class="empty-state" style="padding:60px 20px;"><h3>Order not found</h3><p>This order doesn't exist or isn't associated with your account.</p><a href="/account/orders.html" class="btn btn-primary">Back to Orders</a></div>`;
-} else {
-  const o = { id: snap.id, ...snap.data() };
   document.getElementById('crumbId').textContent = '#' + o.id.slice(0,8).toUpperCase();
+  document.getElementById('pageTitle').textContent = '#' + o.id.slice(0,8).toUpperCase();
 
   const steps = ["pending","confirmed","processing","packed","shipped","delivered"];
   const activeIdx = steps.includes(o.status) ? steps.indexOf(o.status) : (['cancelled','returned','refunded'].includes(o.status) ? 0 : 5);
+  const statusOptionsHTML = window.SBH_STATUS_OPTIONS.map(s => `<option value="${s.value}" ${s.value===o.status?'selected':''}>${s.label}</option>`).join('');
 
   document.getElementById('detailWrap').innerHTML = `
   <div style="display:grid;grid-template-columns:1fr;gap:24px;padding:20px 0 60px;" class="pdp-grid">
     <div>
       <div class="card" style="padding:22px;margin-bottom:20px;">
         <div class="flex justify-between items-center" style="margin-bottom:16px;">
-          <h1 class="section-heading" style="font-size:19px;">#${o.id.slice(0,8).toUpperCase()}</h1>
-          <span class="badge badge-accent">${statusLabel(o.status)}</span>
+          <h3 style="font-size:15px;font-weight:700;">Items</h3>
+          <span class="badge badge-accent">${window.SBH_statusLabel(o.status)}</span>
         </div>
-        <p class="caption-text" style="margin-bottom:20px;">Placed on ${formatDate(o.createdAt)} · Payment: Cash on Delivery</p>
-        ${o.items.map(i => `
+        <p class="caption-text" style="margin-bottom:20px;">Placed on ${formatDate(o.createdAt)} · Payment: ${o.paymentMethod === 'cod' ? 'Cash on Delivery' : escapeHtml(o.paymentMethod || '—')}</p>
+        ${(o.items || []).map(i => `
           <div class="cart-item">
-            <img src="${i.image}" alt="${i.name}" />
+            <img src="${i.image}" alt="${escapeHtml(i.name)}" />
             <div>
-              <div class="cart-item-name">${i.name}</div>
-              <div class="cart-item-meta">SKU: ${i.sku} · Qty: ${i.qty}</div>
+              <div class="cart-item-name">${escapeHtml(i.name)}</div>
+              <div class="cart-item-meta">SKU: ${escapeHtml(i.sku)} · Qty: ${i.qty}</div>
               <strong>${formatINR(i.lineTotal || i.price * i.qty)}</strong>
             </div>
           </div>`).join('')}
@@ -74,7 +77,7 @@ if (!snap.exists() || snap.data().userId !== user.uid) {
         <div class="order-timeline">
           ${steps.map((s,i) => `
             <div class="timeline-step ${i<=activeIdx ? 'done':''}">
-              <div class="t-title">${i===0 ? 'Order Placed' : statusLabel(s)}</div>
+              <div class="t-title">${i===0 ? 'Order Placed' : window.SBH_statusLabel(s)}</div>
               <div class="t-date">${i<=activeIdx ? formatDate(o.createdAt) : 'Pending'}</div>
             </div>`).join('')}
         </div>
@@ -83,11 +86,24 @@ if (!snap.exists() || snap.data().userId !== user.uid) {
 
     <div>
       <div class="card" style="padding:22px;margin-bottom:16px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Update Status</h3>
+        <select id="statusSelect" class="form-select" style="margin-bottom:12px;width:100%;">${statusOptionsHTML}</select>
+        <button id="saveStatusBtn" class="btn btn-primary btn-sm" style="width:100%;">Save Status</button>
+      </div>
+
+      <div class="card" style="padding:22px;margin-bottom:16px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Customer</h3>
+        <p class="body-text">${escapeHtml(o.address?.name || '')}</p>
+        <p class="text-muted" style="font-size:13px;">${escapeHtml(o.customerEmail || '')}</p>
+      </div>
+
+      <div class="card" style="padding:22px;margin-bottom:16px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Shipping Address</h3>
         <p class="body-text">${escapeHtml(o.address?.name || '')}</p>
         <p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.line1 || '')}${o.address?.line2 ? ', ' + escapeHtml(o.address.line2) : ''}, ${escapeHtml(o.address?.city || '')}, ${escapeHtml(o.address?.state || '')} ${escapeHtml(o.address?.pincode || '')}</p>
         <p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.phone || '')}</p>
       </div>
+
       <div class="card" style="padding:22px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Payment Summary</h3>
         <div class="summary-row"><span>Subtotal</span><span>${formatINR(o.subtotal)}</span></div>
@@ -96,9 +112,24 @@ if (!snap.exists() || snap.data().userId !== user.uid) {
       </div>
     </div>
   </div>`;
-}
 
-} // end else (signed in)
+  document.getElementById('saveStatusBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveStatusBtn');
+    const newStatus = document.getElementById('statusSelect').value;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      await window.AdminOrders.updateStatus(o.id, newStatus);
+      window.showToast('Order status updated', 'success');
+      document.querySelector('.badge-accent').textContent = window.SBH_statusLabel(newStatus);
+    } catch (e) {
+      window.showToast('Could not update status', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Status';
+    }
+  });
+})();
 </script>
 </body>
 </html>
