@@ -3,116 +3,102 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Order Detail | Sanjay Bag House Admin</title>
+<title>Order Details | Sanjay Bag House</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css" />
 <link rel="stylesheet" href="/css/admin.css" />
-<style>html:not(.admin-authed) .admin-shell{display:none}</style>
 </head>
-<body class="admin-body">
-<script type="module" src="/js/admin-guard.js"></script>
-<div class="admin-shell">
-  <div id="admin-sidebar"></div>
-  <div class="admin-main">
-    <div id="admin-topbar"></div>
-    <div class="admin-content">
-      <div class="admin-page-head">
-        <div><h1 id="orderTitle">Order</h1><p><a href="/admin/orders.html" style="color:var(--color-accent);">← Back to Orders</a></p></div>
-        <div class="flex gap-8 items-center">
-          <select class="admin-select" id="statusSelect"></select>
-          <button class="btn btn-primary btn-sm" onclick="updateStatus()">Update Status</button>
+<body>
+<div id="sbh-header"></div>
+<main class="container">
+  <nav class="breadcrumb"><a href="/index.html">Home</a><span class="sep">/</span><a href="/account/orders.html">Orders</a><span class="sep">/</span><span class="current" id="crumbId">Order</span></nav>
+  <div id="detailWrap"></div>
+</main>
+<div id="sbh-footer"></div>
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/components.js"></script>
+<script type="module">
+import SBHAuth from "/js/auth.js";
+import { db } from "/js/firebase-init.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+SBHComponents.init('');
+
+const user = await SBHAuth.getCurrentUser();
+if (!user) {
+  window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+} else {
+
+function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
+function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
+function statusLabel(v) {
+  const map = { pending:'Pending', confirmed:'Confirmed', processing:'Processing', packed:'Packed', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned', refunded:'Refunded' };
+  return map[v] || v;
+}
+
+const id = new URLSearchParams(window.location.search).get('id');
+const snap = await getDoc(doc(db, "orders", id));
+
+if (!snap.exists() || snap.data().userId !== user.uid) {
+  document.getElementById('detailWrap').innerHTML = `<div class="empty-state" style="padding:60px 20px;"><h3>Order not found</h3><p>This order doesn't exist or isn't associated with your account.</p><a href="/account/orders.html" class="btn btn-primary">Back to Orders</a></div>`;
+} else {
+  const o = { id: snap.id, ...snap.data() };
+  document.getElementById('crumbId').textContent = '#' + o.id.slice(0,8).toUpperCase();
+
+  const steps = ["pending","confirmed","processing","packed","shipped","delivered"];
+  const activeIdx = steps.includes(o.status) ? steps.indexOf(o.status) : (['cancelled','returned','refunded'].includes(o.status) ? 0 : 5);
+
+  document.getElementById('detailWrap').innerHTML = `
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;padding:20px 0 60px;" class="pdp-grid">
+    <div>
+      <div class="card" style="padding:22px;margin-bottom:20px;">
+        <div class="flex justify-between items-center" style="margin-bottom:16px;">
+          <h1 class="section-heading" style="font-size:19px;">#${o.id.slice(0,8).toUpperCase()}</h1>
+          <span class="badge badge-accent">${statusLabel(o.status)}</span>
         </div>
+        <p class="caption-text" style="margin-bottom:20px;">Placed on ${formatDate(o.createdAt)} · Payment: Cash on Delivery</p>
+        ${o.items.map(i => `
+          <div class="cart-item">
+            <img src="${i.image}" alt="${i.name}" />
+            <div>
+              <div class="cart-item-name">${i.name}</div>
+              <div class="cart-item-meta">SKU: ${i.sku} · Qty: ${i.qty}</div>
+              <strong>${formatINR(i.lineTotal || i.price * i.qty)}</strong>
+            </div>
+          </div>`).join('')}
       </div>
 
-      <div class="pdp-grid" style="grid-template-columns:1.6fr 1fr;gap:20px;">
-        <div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h3>Products Ordered</h3></div>
-            <div class="dt-wrap">
-              <table class="data-table">
-                <thead><tr><th>Image</th><th>Product</th><th>SKU</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
-                <tbody id="itemsBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h3>Order Timeline</h3></div>
-            <div class="admin-panel-body"><div class="order-timeline" id="timelineWrap"></div></div>
-          </div>
-        </div>
-        <div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h3>Customer Information</h3></div>
-            <div class="admin-panel-body" id="custInfo"></div>
-          </div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h3>Shipping Address</h3></div>
-            <div class="admin-panel-body" id="shipInfo"></div>
-          </div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h3>Payment Summary</h3></div>
-            <div class="admin-panel-body" id="paySummary"></div>
-          </div>
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Order Timeline</h3>
+        <div class="order-timeline">
+          ${steps.map((s,i) => `
+            <div class="timeline-step ${i<=activeIdx ? 'done':''}">
+              <div class="t-title">${i===0 ? 'Order Placed' : statusLabel(s)}</div>
+              <div class="t-date">${i<=activeIdx ? formatDate(o.createdAt) : 'Pending'}</div>
+            </div>`).join('')}
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<script src="/js/data.js"></script>
-<script src="/js/store.js"></script>
-<script src="/js/admin-shell.js"></script>
-<script type="module" src="/js/admin-orders.js"></script>
-<script type="module">
-(async () => {
-  AdminShell.init('orders', 'Order Detail');
+    <div>
+      <div class="card" style="padding:22px;margin-bottom:16px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Shipping Address</h3>
+        <p class="body-text">${escapeHtml(o.address?.name || '')}</p>
+        <p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.line1 || '')}${o.address?.line2 ? ', ' + escapeHtml(o.address.line2) : ''}, ${escapeHtml(o.address?.city || '')}, ${escapeHtml(o.address?.state || '')} ${escapeHtml(o.address?.pincode || '')}</p>
+        <p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.phone || '')}</p>
+      </div>
+      <div class="card" style="padding:22px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Payment Summary</h3>
+        <div class="summary-row"><span>Subtotal</span><span>${formatINR(o.subtotal)}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${o.shipping === 0 ? 'FREE' : formatINR(o.shipping)}</span></div>
+        <div class="summary-row total"><span>Total</span><span>${formatINR(o.total)}</span></div>
+      </div>
+    </div>
+  </div>`;
+}
 
-  function formatINR(n) { return "₹" + (n||0).toLocaleString("en-IN"); }
-  function formatDate(ts) { return ts?.toDate ? ts.toDate().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'; }
-
-  const id = new URLSearchParams(window.location.search).get('id');
-  const o = await window.AdminOrders.getOne(id);
-
-  if (!o) {
-    document.getElementById('orderTitle').textContent = 'Order not found';
-    return;
-  }
-
-  document.getElementById('orderTitle').textContent = 'Order #' + o.id.slice(0,8).toUpperCase();
-
-  document.getElementById('statusSelect').innerHTML = window.SBH_STATUS_OPTIONS.map(s => `<option value="${s.value}" ${s.value===o.status?'selected':''}>${s.label}</option>`).join('');
-
-  document.getElementById('itemsBody').innerHTML = o.items.map(i => `
-    <tr><td><img src="${i.image}" alt="${i.name}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;"/></td><td>${i.name}</td><td>${i.sku}</td><td>${i.qty}</td><td>${formatINR(i.price)}</td><td>${formatINR(i.lineTotal || i.price*i.qty)}</td></tr>`).join('');
-
-  document.getElementById('custInfo').innerHTML = `<p class="body-text" style="margin-bottom:4px;"><strong>${escapeHtml(o.address?.name || '—')}</strong></p><p class="text-muted" style="font-size:13px;">📞 ${escapeHtml(o.address?.phone || '—')}</p><p class="text-muted" style="font-size:13px;">✉️ ${escapeHtml(o.customerEmail || '—')}</p>`;
-  document.getElementById('shipInfo').innerHTML = `<p class="body-text">${escapeHtml(o.address?.line1 || '')}${o.address?.line2 ? ', ' + escapeHtml(o.address.line2) : ''}</p><p class="text-muted" style="font-size:13px;">${escapeHtml(o.address?.city || '')}, ${escapeHtml(o.address?.state || '')} ${escapeHtml(o.address?.pincode || '')}</p>`;
-  document.getElementById('paySummary').innerHTML = `
-    <div class="summary-row"><span>Subtotal</span><span>${formatINR(o.subtotal)}</span></div>
-    <div class="summary-row"><span>Shipping</span><span>${o.shipping===0?'FREE':formatINR(o.shipping)}</span></div>
-    <div class="summary-row total"><span>Total</span><span>${formatINR(o.total)}</span></div>
-    <p class="caption-text" style="margin-top:10px;">Payment Method: <strong>Cash on Delivery</strong></p>`;
-
-  const STEPS = ["pending","confirmed","processing","packed","shipped","delivered"];
-  function renderTimeline() {
-    const idx = STEPS.includes(o.status) ? STEPS.indexOf(o.status) : (o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded' ? 0 : 5);
-    document.getElementById('timelineWrap').innerHTML = STEPS.map((s,i) => `
-      <div class="timeline-step ${i<=idx?'done':''}"><div class="t-title">${i===0 ? 'Order Placed' : window.SBH_statusLabel(s)}</div><div class="t-date">${i<=idx ? formatDate(o.createdAt) : 'Pending'}</div></div>`).join('');
-  }
-  renderTimeline();
-
-  window.updateStatus = async function() {
-    const newStatus = document.getElementById('statusSelect').value;
-    try {
-      await window.AdminOrders.updateStatus(o.id, newStatus);
-      o.status = newStatus;
-      showToast('Order status updated successfully', 'success');
-      renderTimeline();
-    } catch (err) {
-      showToast('Could not update order status. Please try again.', 'error');
-    }
-  };
-})();
+} // end else (signed in)
 </script>
 </body>
 </html>
