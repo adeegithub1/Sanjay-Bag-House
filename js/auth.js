@@ -62,15 +62,22 @@ const SBHAuth = {
   },
 
   /**
-   * Checks if the current signed-in user has the admin custom claim.
-   * Claim is set server-side by the setAdminClaim Cloud Function — never
-   * trust a Firestore field for this, always use the ID token claim.
+   * Checks if the current signed-in user has admin access.
+   * There's no Cloud Function on the free Spark plan to set a custom auth
+   * claim, so admin status is instead marked by the presence of a document
+   * at admins/{uid} — created MANUALLY in the Firebase Console by the store
+   * owner. The firestore.rules deny all client writes to /admins, so this
+   * can't be forged from the browser even though it's a plain Firestore read.
    */
   async isAdmin() {
     const user = auth.currentUser || (await this.getCurrentUser());
     if (!user) return false;
-    const token = await user.getIdTokenResult();
-    return token.claims.admin === true;
+    try {
+      const snap = await getDoc(doc(db, "admins", user.uid));
+      return snap.exists();
+    } catch (e) {
+      return false;
+    }
   },
 
   onChange(callback) {
