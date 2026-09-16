@@ -208,7 +208,14 @@ window.closeImageZoom = function() {
 };
 window.changeQty = function(d){ qty = Math.max(1, Math.min(p.stock, qty+d)); document.getElementById('qtyVal').textContent = qty; };
 window.addToCartPDP = function(){ window.SBHStore.addToCart(p.id, qty); showToast('Product added to cart','success'); };
-window.buyNowPDP = function(){ window.SBHStore.addToCart(p.id, qty); window.location.href = '/checkout.html'; };
+window.buyNowPDP = function(){
+  // "Buy Now" is a single-item express purchase — it must NOT touch the
+  // shared cart in localStorage. We stash just this product/qty in
+  // sessionStorage and flag the checkout page via ?buynow=1, so checkout
+  // builds its order from only this item instead of the whole persisted cart.
+  sessionStorage.setItem('sbh_buynow', JSON.stringify({ productId: p.id, qty }));
+  window.location.href = '/checkout.html?buynow=1';
+};
 window.toggleWishlistPDP = function(){
   const added = window.SBHStore.toggleWishlist(p.id);
   showToast(added?'Added to wishlist':'Removed from wishlist', added?'success':'default');
