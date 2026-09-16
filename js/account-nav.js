@@ -9,12 +9,25 @@
     return `
     <nav class="account-nav card" style="padding:10px;">
       ${items.map(i => `<a class="${active===i.key?'active':''}" href="${i.href}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${i.icon}</svg> ${i.label}</a>`).join('')}
+      <a href="/admin/index.html" id="sbhAdminNavLink" style="display:none;color:var(--color-accent);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Admin Dashboard</a>
       <a href="#" id="sbhLogoutLink" style="color:var(--color-danger);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> Logout</a>
     </nav>`;
   };
 
-  // Wires up #sbhLogoutLink wherever renderAccountNav is used. Safe to call
-  // multiple times; call this right after inserting the nav HTML into the page.
+  window.wireAccountNavAdminLink = async function (user) {
+    const link = document.getElementById('sbhAdminNavLink');
+    if (!link) return;
+    try {
+      const { default: SBHAuth } = await import('/js/auth.js');
+      if (user === undefined) user = await SBHAuth.getCurrentUser();
+      if (!user) return;
+      const isAdmin = await SBHAuth.isAdmin();
+      if (isAdmin) link.style.display = '';
+    } catch (e) {
+      // Not an admin, or the check failed — leave the link hidden.
+    }
+  };
+
   window.wireAccountNavLogout = function () {
     const link = document.getElementById('sbhLogoutLink');
     if (!link) return;
