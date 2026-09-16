@@ -45,7 +45,29 @@ if (!user) {
   window.location.href = "/login.html?next=" + encodeURIComponent("/checkout.html");
 } else {
 
-const items = await window.SBHStore.cartDetailed();
+// If we arrived here via "Buy Now" (?buynow=1), build the order from ONLY
+// the single item stashed in sessionStorage — never from the shared cart.
+// Otherwise, fall back to the normal persisted cart as before.
+const isBuyNow = new URLSearchParams(window.location.search).get('buynow') === '1';
+
+async function getCheckoutItems() {
+  if (isBuyNow) {
+    let bn = null;
+    try { bn = JSON.parse(sessionStorage.getItem('sbh_buynow')); } catch (e) { bn = null; }
+    if (bn && bn.productId) {
+      const fsData = await window.SBH_FIRESTORE.load();
+      const prod = fsData.PRODUCTS.find(pp => pp.id === bn.productId);
+      if (prod) {
+        return [{ ...prod, qty: bn.qty, lineTotal: prod.price * bn.qty }];
+      }
+    }
+    // Buy Now data missing/expired (e.g. page reload, cleared sessionStorage) —
+    // fall through to the regular cart rather than showing a broken order.
+  }
+  return window.SBHStore.cartDetailed();
+}
+
+const items = await getCheckoutItems();
 const profile = await SBHAuth.getCustomerProfile(user.uid);
 const data = window.SBH_DATA;
 
@@ -198,7 +220,7 @@ window.placeOrder = async function(e) {
     // protection — not as strong as a server-side Cloud Function, but still
     // prevents two near-simultaneous checkouts from both silently overselling
     // within the same browser session's transaction window).
-    const freshItems = await window.SBHStore.cartDetailed();
+    const freshItems = await getCheckoutItems();
     if (!freshItems.length) throw new Error("Your cart is empty.");
 
     const orderRef = doc(collection(db, "orders"));
@@ -267,7 +289,11 @@ window.placeOrder = async function(e) {
       });
     } catch (e) { /* non-critical */ }
 
-    window.SBHStore.clearCart();
+    if (isBuyNow) {
+      sessionStorage.removeItem('sbh_buynow');
+    } else {
+      window.SBHStore.clearCart();
+    }
     localStorage.removeItem('sbh_coupon');
     window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderRef.id);
   } catch (err) {
