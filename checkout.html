@@ -175,6 +175,7 @@ if (!shippingSettings.codEnabled) {
     <div>
       <div class="card" style="padding:22px;">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
+        ${isBuyNow ? `<p class="caption-text" style="margin:-8px 0 14px;">Buying this item only. <a href="#" id="cancelBuyNow" style="color:var(--color-accent);font-weight:600;">Not this — go to cart instead</a></p>` : ''}
         ${items.map(i => `<div class="summary-row"><span>${i.name} × ${i.qty}</span><span>${data.formatINR(i.lineTotal)}</span></div>`).join('')}
         <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
         ${storedCoupon ? `<div class="summary-row"><span>Coupon (${storedCoupon.code})</span><span style="color:var(--color-success);">− ${data.formatINR(couponDiscount)}</span></div>` : ''}
@@ -188,6 +189,14 @@ if (!shippingSettings.codEnabled) {
       </div>
     </div>
   </div>`;
+
+  if (isBuyNow) {
+    document.getElementById('cancelBuyNow').addEventListener('click', (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem('sbh_buynow');
+      window.location.href = '/cart.html';
+    });
+  }
 }
 
 window.placeOrder = async function(e) {
