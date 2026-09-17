@@ -81,7 +81,8 @@
 (async () => {
 SBHComponents.init('shop');
 const data = await window.SBH_FIRESTORE.load();
-let state = { categories: [], brands: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false };
+const maxRealPrice = data.PRODUCTS.length ? Math.max(...data.PRODUCTS.map(p => p.price), 6000) : 6000;
+let state = { categories: [], brands: [], price: maxRealPrice, sort: 'featured', rating: 0, page: 1, inStock: false };
 const PAGE_SIZE = 8;
 
 function categoryCount(catId) { return data.PRODUCTS.filter(p => p.category === catId).length; }
@@ -98,7 +99,7 @@ function filterHTML() {
   </div>
   <div class="filter-block">
     <h4>Price</h4>
-    <input type="range" min="500" max="6000" step="100" value="${state.price}" oninput="setPrice(this.value)" style="width:100%;accent-color:var(--color-accent);" />
+    <input type="range" min="500" max="${maxRealPrice}" step="100" value="${state.price}" oninput="setPrice(this.value)" style="width:100%;accent-color:var(--color-accent);" />
     <div class="flex justify-between caption-text mt-8"><span>₹500</span><span id="priceVal">Up to ₹${state.price}</span></div>
   </div>
   <div class="filter-block">
@@ -141,7 +142,7 @@ window.toggleBrand = function(name) {
 window.setPrice = function(v) { state.price = Number(v); state.page = 1; render(); };
 window.setInStock = function(checked) { state.inStock = checked; state.page = 1; render(); };
 window.setRating = function(r) { state.rating = r; state.page = 1; render(); };
-window.resetFilters = function() { state = { categories: [], brands: [], price: 6000, sort: 'featured', rating: 0, page: 1, inStock: false }; document.getElementById('sortSelect').value='featured'; render(); };
+window.resetFilters = function() { state = { categories: [], brands: [], price: maxRealPrice, sort: 'featured', rating: 0, page: 1, inStock: false }; document.getElementById('sortSelect').value='featured'; render(); };
 window.goToPage = function(p) { state.page = p; render(); window.scrollTo({top:0,behavior:'smooth'}); };
 
 window.openFilterDrawer = function(){ document.getElementById('filterDrawer').classList.add('open'); document.getElementById('filterDrawerOverlay').classList.add('open'); document.body.style.overflow='hidden'; };
