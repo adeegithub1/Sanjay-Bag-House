@@ -53,15 +53,37 @@
     /** ASYNC now — await this. Hydrates cart product IDs against real Firestore data. */
     async cartDetailed() {
       const data = await window.SBH_FIRESTORE.load();
-      return this.getCart().map(i => {
+      const cart = this.getCart();
+      const validEntries = [];
+      const detailed = [];
+      cart.forEach(i => {
         const p = data.PRODUCTS.find(pp => pp.id === i.productId);
-        return p ? { ...p, qty: i.qty, lineTotal: p.price * i.qty } : null;
-      }).filter(Boolean);
+        if (p) { validEntries.push(i); detailed.push({ ...p, qty: i.qty, lineTotal: p.price * i.qty }); }
+      });
+      // Self-heal: if any entries pointed at products that no longer exist
+      // (deleted/unpublished), drop them from storage and refresh the badges —
+      // otherwise the cart page can say "empty" while the header count lags.
+      if (validEntries.length !== cart.length) {
+        write(CART_KEY, validEntries);
+        document.dispatchEvent(new CustomEvent("sbh:cart-updated"));
+      }
+      return detailed;
     },
     /** ASYNC now — await this. */
     async wishlistDetailed() {
       const data = await window.SBH_FIRESTORE.load();
-      return this.getWishlist().map(id => data.PRODUCTS.find(p => p.id === id)).filter(Boolean);
+      const list = this.getWishlist();
+      const validIds = [];
+      const detailed = [];
+      list.forEach(id => {
+        const p = data.PRODUCTS.find(pp => pp.id === id);
+        if (p) { validIds.push(id); detailed.push(p); }
+      });
+      if (validIds.length !== list.length) {
+        write(WISHLIST_KEY, validIds);
+        document.dispatchEvent(new CustomEvent("sbh:wishlist-updated"));
+      }
+      return detailed;
     },
   };
 
