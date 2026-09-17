@@ -212,7 +212,13 @@ window.closeImageZoom = function() {
 };
 window.changeQty = function(d){ qty = Math.max(1, Math.min(p.stock, qty+d)); document.getElementById('qtyVal').textContent = qty; };
 window.addToCartPDP = function(){ window.SBHStore.addToCart(p.id, qty); showToast('Product added to cart','success'); };
-window.buyNowPDP = function(){ window.SBHStore.addToCart(p.id, qty); window.location.href = '/checkout.html'; };
+window.buyNowPDP = function(){
+  // Buy Now must NOT touch the shared cart — it stashes just this one product/qty
+  // in sessionStorage and sends checkout.html the ?buynow=1 flag, which makes it
+  // build the order from only this item instead of the full persisted cart.
+  sessionStorage.setItem('sbh_buynow', JSON.stringify({ productId: p.id, qty }));
+  window.location.href = '/checkout.html?buynow=1';
+};
 window.toggleWishlistPDP = function(){
   const added = window.SBHStore.toggleWishlist(p.id);
   showToast(added?'Added to wishlist':'Removed from wishlist', added?'success':'default');
