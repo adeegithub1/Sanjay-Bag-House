@@ -34,6 +34,7 @@ import SBHAuth from "/js/auth.js";
 import { db } from "/js/firebase-init.js";
 import {
   collection, doc, runTransaction, serverTimestamp, increment,
+  getDoc, updateDoc, query, where, getDocs,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 SBHComponents.init('shop');
@@ -175,7 +176,6 @@ if (!shippingSettings.codEnabled) {
     <div>
       <div class="card" style="padding:22px;">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Order Summary</h3>
-        ${isBuyNow ? `<p class="caption-text" style="margin:-8px 0 14px;">Buying this item only. <a href="#" id="cancelBuyNow" style="color:var(--color-accent);font-weight:600;">Not this — go to cart instead</a></p>` : ''}
         ${items.map(i => `<div class="summary-row"><span>${i.name} × ${i.qty}</span><span>${data.formatINR(i.lineTotal)}</span></div>`).join('')}
         <div class="summary-row"><span>Subtotal</span><span>${data.formatINR(subtotal)}</span></div>
         ${storedCoupon ? `<div class="summary-row"><span>Coupon (${storedCoupon.code})</span><span style="color:var(--color-success);">− ${data.formatINR(couponDiscount)}</span></div>` : ''}
@@ -189,14 +189,6 @@ if (!shippingSettings.codEnabled) {
       </div>
     </div>
   </div>`;
-
-  if (isBuyNow) {
-    document.getElementById('cancelBuyNow').addEventListener('click', (e) => {
-      e.preventDefault();
-      sessionStorage.removeItem('sbh_buynow');
-      window.location.href = '/cart.html';
-    });
-  }
 }
 
 window.placeOrder = async function(e) {
@@ -232,6 +224,32 @@ window.placeOrder = async function(e) {
     const freshItems = await getCheckoutItems();
     if (!freshItems.length) throw new Error("Your cart is empty.");
 
+    // Re-validate the coupon against the REAL Firestore document right before
+    // writing the order — never trust the cached amount from localStorage,
+    // since that's fully editable by the customer's own browser. Recompute
+    // the discount fresh from real coupon data + real cart subtotal.
+    let verifiedDiscount = 0;
+    let verifiedCouponCode = null;
+    if (storedCoupon) {
+      const couponSnap = await getDoc(doc(db, "coupons", storedCoupon.code));
+      if (!couponSnap.exists() || !couponSnap.data().active) {
+        throw new Error("Your coupon is no longer valid. Please remove it and try again.");
+      }
+      const c = couponSnap.data();
+      const today = new Date().toISOString().slice(0,10);
+      if (c.start && today < c.start) throw new Error("Your coupon isn't active yet.");
+      if (c.end && today > c.end) throw new Error("Your coupon has expired.");
+      if (c.usageLimit && (c.used||0) >= c.usageLimit) throw new Error("Your coupon has reached its usage limit.");
+      if (c.perUser) {
+        const myOrdersSnap = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid), where("couponCode", "==", storedCoupon.code)));
+        if (myOrdersSnap.size >= c.perUser) throw new Error("You've already used this coupon the maximum number of times.");
+      }
+      const freshSubtotal = freshItems.reduce((s,i) => s + i.lineTotal, 0);
+      if (freshSubtotal < c.minOrder) throw new Error(`Minimum order of ${data.formatINR(c.minOrder)} required for this coupon.`);
+      verifiedDiscount = c.type === 'Percentage' ? Math.min(Math.round(freshSubtotal * c.value/100), c.maxDiscount || Infinity) : c.value;
+      verifiedCouponCode = storedCoupon.code;
+    }
+
     const orderRef = doc(collection(db, "orders"));
 
     await runTransaction(db, async (tx) => {
@@ -259,7 +277,7 @@ window.placeOrder = async function(e) {
       }
 
       const shipping = subtotal >= shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
-      const discount = storedCoupon ? Math.min(storedCoupon.amount, subtotal) : 0;
+      const discount = Math.min(verifiedDiscount, subtotal);
       const codFee = shippingSettings.codFee || 0;
       const total = subtotal - discount + shipping + codFee;
 
@@ -269,7 +287,7 @@ window.placeOrder = async function(e) {
         address,
         paymentMethod: "cod",
         subtotal, shipping, discount, codFee,
-        couponCode: storedCoupon ? storedCoupon.code : null,
+        couponCode: verifiedCouponCode,
         total,
         status: "pending",
         createdAt: serverTimestamp(),
@@ -278,14 +296,12 @@ window.placeOrder = async function(e) {
 
     // Best-effort: bump the coupon's usage counter (allowed by rules — signed-in
     // users may only increase 'used' by exactly 1, nothing else on the coupon doc)
-    if (storedCoupon) {
+    if (verifiedCouponCode) {
       try {
-        const { getDoc: getDocFn } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
-        const couponRef = doc(db, "coupons", storedCoupon.code);
-        const couponSnap = await getDocFn(couponRef);
+        const couponRef = doc(db, "coupons", verifiedCouponCode);
+        const couponSnap = await getDoc(couponRef);
         if (couponSnap.exists()) {
-          const { updateDoc: updateDocFn } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
-          await updateDocFn(couponRef, { used: (couponSnap.data().used || 0) + 1 });
+          await updateDoc(couponRef, { used: (couponSnap.data().used || 0) + 1 });
         }
       } catch (e) { /* non-critical */ }
     }
