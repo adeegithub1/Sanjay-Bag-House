@@ -25,7 +25,7 @@
 <script type="module" src="/js/firebase-data.js"></script>
 <script type="module">
 import { db } from "/js/firebase-init.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import SBHAuth from "/js/auth.js";
 
 SBHComponents.init('shop');
@@ -147,6 +147,15 @@ window.applyCoupon = async function() {
     if (coupon.start && today < coupon.start) { msg.innerHTML = `<p class="form-error">This coupon isn't active yet.</p>`; return; }
     if (coupon.end && today > coupon.end) { msg.innerHTML = `<p class="form-error">This coupon has expired.</p>`; return; }
     if (coupon.usageLimit && (coupon.used||0) >= coupon.usageLimit) { msg.innerHTML = `<p class="form-error">This coupon has reached its usage limit.</p>`; return; }
+
+    if (coupon.perUser) {
+      const myOrdersQ = query(collection(db, "orders"), where("userId", "==", user.uid), where("couponCode", "==", code));
+      const myOrdersSnap = await getDocs(myOrdersQ);
+      if (myOrdersSnap.size >= coupon.perUser) {
+        msg.innerHTML = `<p class="form-error">You've already used this coupon the maximum number of times (${coupon.perUser}).</p>`;
+        return;
+      }
+    }
 
     const items = await window.SBHStore.cartDetailed();
     const subtotal = items.reduce((s,i)=>s+i.lineTotal,0);
