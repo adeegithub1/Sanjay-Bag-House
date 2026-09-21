@@ -85,6 +85,19 @@
     </div>
 
     <div>
+      ${o.paymentMethod === 'razorpay' ? `
+      <div class="card" style="padding:22px;margin-bottom:16px;">
+        <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Payment Verification</h3>
+        <p class="body-text" style="margin-bottom:4px;">Payment ID: <code style="font-size:12.5px;">${escapeHtml(o.razorpayPaymentId || '—')}</code></p>
+        <p class="caption-text" style="margin-bottom:12px;">This site has no backend, so online payments can't be auto-verified. Check this payment ID in your <a href="https://dashboard.razorpay.com/app/payments" target="_blank" rel="noopener" style="color:var(--color-accent);font-weight:600;">Razorpay Dashboard</a>, then confirm it here.</p>
+        <div id="paymentVerifyBadge" style="margin-bottom:12px;">
+          ${o.paymentStatus === 'verified'
+            ? '<span class="badge badge-success">✓ Payment Verified</span>'
+            : '<span class="badge badge-warning">⚠ Payment Unverified</span>'}
+        </div>
+        ${o.paymentStatus !== 'verified' ? '<button id="verifyPaymentBtn" class="btn btn-secondary btn-sm" style="width:100%;">Mark Payment as Verified</button>' : ''}
+      </div>` : ''}
+
       <div class="card" style="padding:22px;margin-bottom:16px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:12px;">Update Status</h3>
         <select id="statusSelect" class="form-select" style="margin-bottom:12px;width:100%;">${statusOptionsHTML}</select>
@@ -129,6 +142,24 @@
       btn.textContent = 'Save Status';
     }
   });
+
+  const verifyBtn = document.getElementById('verifyPaymentBtn');
+  if (verifyBtn) {
+    verifyBtn.addEventListener('click', async () => {
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Saving...';
+      try {
+        await window.AdminOrders.updatePaymentStatus(o.id, 'verified');
+        document.getElementById('paymentVerifyBadge').innerHTML = '<span class="badge badge-success">✓ Payment Verified</span>';
+        verifyBtn.remove();
+        window.showToast('Payment marked as verified', 'success');
+      } catch (e) {
+        window.showToast('Could not update payment status', 'error');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Mark Payment as Verified';
+      }
+    });
+  }
 })();
 </script>
 </body>
