@@ -145,3 +145,11 @@ body.admin-body { background: #F3F1EC; }
 .settings-tabs { display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--color-border); margin-bottom: 22px; }
 .settings-tab { padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--color-muted); border-bottom: 2px solid transparent; white-space: nowrap; background:none;border:none; }
 .settings-tab.active { color: var(--color-primary); border-bottom-color: var(--color-accent); }
+
+/* Product photo uploader (camera / ImgBB) */
+.photo-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; border: 1.5px solid var(--color-border); background-color: var(--color-secondary); background-size: cover; background-position: center; flex-shrink: 0; }
+.photo-thumb-spinner { position: absolute; inset: 0; margin: auto; width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid rgba(0,0,0,0.15); border-top-color: var(--color-accent); animation: photo-thumb-spin 0.8s linear infinite; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+@keyframes photo-thumb-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.photo-thumb-remove { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; border: none; background: var(--color-text); color: #fff; font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.photo-thumb-error { border-color: var(--color-error, #d33); }
+.photo-thumb-error-badge { position: absolute; top: -7px; left: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--color-error, #d33); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: help; }
