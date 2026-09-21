@@ -16,7 +16,7 @@
    people you trust, same as today.
    ============================================================ */
 
-const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY";
+const IMGBB_API_KEY = "8464aaec28177af4abb9f1c4f3a993f8";
 const IMGBB_ENDPOINT = "https://api.imgbb.com/1/upload";
 
 /** Uploads a single File to ImgBB and resolves with the hosted image URL. */
