@@ -45,6 +45,10 @@ const AdminOrders = {
   async updateStatus(id, status) {
     await updateDoc(doc(db, "orders", id), { status });
   },
+
+  async updatePaymentStatus(id, paymentStatus) {
+    await updateDoc(doc(db, "orders", id), { paymentStatus });
+  },
 };
 
 window.AdminOrders = AdminOrders;
