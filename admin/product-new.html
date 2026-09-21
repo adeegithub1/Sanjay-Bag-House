@@ -24,14 +24,11 @@
         <div class="admin-form-grid">
           <div>
             <div class="form-section">
-              <h3>Product Image</h3>
-              <p class="desc">Paste a direct image URL (e.g. from Unsplash, or your own image hosting). Real file upload isn't wired up yet — that needs Firebase Storage, a later add-on.</p>
-              <div class="form-group"><label class="form-label">Primary Image URL <span class="req">*</span></label><input required class="form-input" id="f_image" placeholder="https://..." /></div>
-              <div class="form-group"><label class="form-label">Image 2 URL</label><input class="form-input" id="f_image2" placeholder="https://... (optional)" /></div>
-              <div class="form-group"><label class="form-label">Image 3 URL</label><input class="form-input" id="f_image3" placeholder="https://... (optional)" /></div>
-              <div class="form-group"><label class="form-label">Image 4 URL</label><input class="form-input" id="f_image4" placeholder="https://... (optional)" /></div>
-              <div class="form-group"><label class="form-label">Image 5 URL</label><input class="form-input" id="f_image5" placeholder="https://... (optional)" /></div>
-              <div id="imgPreviewStrip" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
+              <h3>Product Photos <span class="req">*</span></h3>
+              <p class="desc">Take a photo with your camera or pick one from your gallery. The first photo is used as the primary image — up to 5 photos.</p>
+              <div id="photoThumbs" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
+              <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none" />
+              <button type="button" class="btn btn-ghost" id="addPhotoBtn">📷 Add Photo</button>
             </div>
 
             <div class="form-section">
@@ -116,6 +113,7 @@
 <script src="/js/store.js"></script>
 <script src="/js/admin-shell.js"></script>
 <script type="module" src="/js/admin-products.js"></script>
+<script type="module" src="/js/imgbb-upload.js"></script>
 <script type="module">
 (async () => {
   AdminShell.init('products', 'Add Product');
@@ -128,11 +126,12 @@
     document.getElementById('brandList').innerHTML = snap.docs.map(d => `<option value="${d.data().name}">`).join('');
   }).catch(() => {});
 
-  function updateImgPreviews() {
-    const urls = ['f_image','f_image2','f_image3','f_image4','f_image5'].map(id => document.getElementById(id).value.trim()).filter(Boolean);
-    document.getElementById('imgPreviewStrip').innerHTML = urls.map(u => `<img src="${u}" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--color-border);" />`).join('');
-  }
-  ['f_image','f_image2','f_image3','f_image4','f_image5'].forEach(id => document.getElementById(id).addEventListener('input', updateImgPreviews));
+  const photoUploader = window.ImgBBUploader.createPhotoUploader({
+    input: document.getElementById('photoInput'),
+    button: document.getElementById('addPhotoBtn'),
+    thumbs: document.getElementById('photoThumbs'),
+    max: 5,
+  });
 
   function updateDiscount() {
     const mrp = Number(document.getElementById('f_mrp').value) || 0;
@@ -148,6 +147,13 @@
 
   document.getElementById('productForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    const images = photoUploader.getImages();
+    if (!images.length) {
+      showToast('Add at least one product photo before saving.', 'error');
+      return;
+    }
+
     const btn = document.getElementById('saveBtn');
     btn.disabled = true; btn.textContent = 'Saving...';
 
@@ -169,7 +175,7 @@
       weight: document.getElementById('f_weight').value.trim(),
       warranty: document.getElementById('f_warranty').value.trim(),
       care: document.getElementById('f_care').value.trim(),
-      images: ['f_image','f_image2','f_image3','f_image4','f_image5'].map(id => document.getElementById(id).value.trim()).filter(Boolean),
+      images: images,
       active: document.getElementById('f_active').checked,
       featured: document.getElementById('f_featured').checked,
       bestseller: document.getElementById('f_bestseller').checked,
