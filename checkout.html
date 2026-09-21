@@ -38,8 +38,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 SBHComponents.init('shop');
-const { loadShippingSettings } = await import("/js/store-settings.js");
+const { loadShippingSettings, loadPaymentSettings, loadBrandingSettings } = await import("/js/store-settings.js");
 const shippingSettings = await loadShippingSettings();
+const paymentSettings = await loadPaymentSettings();
+const brandingSettings = await loadBrandingSettings();
+const storeDisplayName = brandingSettings.storeName || "Sanjay Bag House";
+let selectedPaymentMethod = 'cod';
 
 const user = await SBHAuth.getCurrentUser();
 if (!user) {
@@ -156,20 +160,7 @@ if (!shippingSettings.codEnabled) {
 
       <div class="card" style="padding:22px;">
         <h3 style="font-size:14.5px;font-weight:700;margin-bottom:16px;">Payment Method</h3>
-        <label class="radio-card" style="margin-bottom:10px;opacity:.55;cursor:not-allowed;">
-          <input type="radio" name="pay" disabled />
-          <div>
-            <strong style="font-size:13.5px;">Online Payment</strong>
-            <p class="caption-text">UPI, Cards, Netbanking &amp; Wallets — coming soon</p>
-          </div>
-        </label>
-        <label class="radio-card selected" id="codCard">
-          <input type="radio" name="pay" checked disabled />
-          <div>
-            <strong style="font-size:13.5px;">Cash on Delivery</strong>
-            <p class="caption-text">Pay when your order arrives</p>
-          </div>
-        </label>
+        <div id="paymentMethodWrap"></div>
       </div>
     </form>
 
@@ -184,11 +175,180 @@ if (!shippingSettings.codEnabled) {
         <div class="summary-row total"><span>Total</span><span id="totalDisplay">${data.formatINR(total)}</span></div>
         ${totalSavings > 0 ? `<div style="background:var(--color-success-bg);color:var(--color-success);border-radius:8px;padding:9px 12px;margin-top:10px;font-size:13px;font-weight:700;text-align:center;">🎉 You saved ${data.formatINR(totalSavings)} on this order!</div>` : ''}
         ${codBlocked ? `<p class="form-error" style="margin-top:8px;">${belowCodMin ? `Minimum order for COD is ${data.formatINR(shippingSettings.codMinOrder)}.` : `Maximum order for COD is ${data.formatINR(shippingSettings.codMaxOrder)}.`}</p>` : ''}
-        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="placeOrder(event)" id="placeOrderBtn" ${codBlocked ? 'disabled' : ''}>Place Order (COD)</button>
+        <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="handlePlaceOrderClick(event)" id="placeOrderBtn" ${codBlocked ? 'disabled' : ''}>Place Order (COD)</button>
         <p class="caption-text" style="text-align:center;margin-top:10px;">🔒 Your information is safe and secure</p>
       </div>
     </div>
   </div>`;
+
+  renderPaymentMethod();
+}
+
+function renderPaymentMethod() {
+  const wrap = document.getElementById('paymentMethodWrap');
+  if (!wrap) return;
+  const onlineEnabled = paymentSettings.razorpayEnabled && paymentSettings.razorpayKeyId;
+  wrap.innerHTML = `
+    <label class="radio-card" id="onlineCard" style="margin-bottom:10px;${onlineEnabled ? '' : 'opacity:.55;cursor:not-allowed;'}">
+      <input type="radio" name="pay" id="payOnlineRadio" ${onlineEnabled ? '' : 'disabled'} onchange="setPaymentMethod('razorpay')" />
+      <div>
+        <strong style="font-size:13.5px;">Online Payment ${onlineEnabled && paymentSettings.testMode ? '<span class="badge badge-warning">TEST MODE</span>' : ''}</strong>
+        <p class="caption-text">${onlineEnabled ? 'UPI, Cards, Netbanking & Wallets' : 'Currently unavailable'}</p>
+      </div>
+    </label>
+    <label class="radio-card selected" id="codCard">
+      <input type="radio" name="pay" id="payCodRadio" checked onchange="setPaymentMethod('cod')" />
+      <div>
+        <strong style="font-size:13.5px;">Cash on Delivery</strong>
+        <p class="caption-text">Pay when your order arrives</p>
+      </div>
+    </label>
+  `;
+}
+
+window.setPaymentMethod = function(method) {
+  selectedPaymentMethod = method;
+  document.getElementById('codCard').classList.toggle('selected', method === 'cod');
+  document.getElementById('onlineCard').classList.toggle('selected', method === 'razorpay');
+  const btn = document.getElementById('placeOrderBtn');
+  if (btn) btn.textContent = method === 'razorpay' ? 'Pay Now' : 'Place Order (COD)';
+};
+
+window.handlePlaceOrderClick = function(e) {
+  if (selectedPaymentMethod === 'razorpay') {
+    window.payWithRazorpay(e);
+  } else {
+    window.placeOrder(e);
+  }
+};
+
+function getCheckoutAddress() {
+  return {
+    name: document.getElementById('ck_name').value.trim(),
+    phone: document.getElementById('ck_phone').value.trim(),
+    line1: document.getElementById('ck_line1').value.trim(),
+    line2: document.getElementById('ck_line2').value.trim(),
+    landmark: document.getElementById('ck_landmark').value.trim(),
+    city: document.getElementById('ck_city').value.trim(),
+    state: document.getElementById('ck_state').value,
+    pincode: document.getElementById('ck_pincode').value.trim(),
+  };
+}
+
+/**
+ * Shared order-creation logic used by BOTH Cash on Delivery and Razorpay.
+ * Re-validates cart/stock/coupon fresh against Firestore (never trusts
+ * client-cached values), writes the order in a transaction, then does the
+ * best-effort follow-up work (coupon usage bump, customer stats, cleanup).
+ * paymentMethod: 'cod' | 'razorpay'
+ * extraOrderFields: extra fields to merge onto the order doc (e.g. Razorpay payment ID)
+ */
+async function finalizeOrder(paymentMethod, extraOrderFields = {}) {
+  const address = getCheckoutAddress();
+
+  // Re-fetch fresh cart details right before writing, and run as a
+  // transaction so stock is decremented atomically (best effort client-side
+  // protection — not as strong as a server-side Cloud Function, but still
+  // prevents two near-simultaneous checkouts from both silently overselling
+  // within the same browser session's transaction window).
+  const freshItems = await getCheckoutItems();
+  if (!freshItems.length) throw new Error("Your cart is empty.");
+
+  // Re-validate the coupon against the REAL Firestore document right before
+  // writing the order — never trust the cached amount from localStorage,
+  // since that's fully editable by the customer's own browser. Recompute
+  // the discount fresh from real coupon data + real cart subtotal.
+  let verifiedDiscount = 0;
+  let verifiedCouponCode = null;
+  if (storedCoupon) {
+    const couponSnap = await getDoc(doc(db, "coupons", storedCoupon.code));
+    if (!couponSnap.exists() || !couponSnap.data().active) {
+      throw new Error("Your coupon is no longer valid. Please remove it and try again.");
+    }
+    const c = couponSnap.data();
+    const today = new Date().toISOString().slice(0,10);
+    if (c.start && today < c.start) throw new Error("Your coupon isn't active yet.");
+    if (c.end && today > c.end) throw new Error("Your coupon has expired.");
+    if (c.usageLimit && (c.used||0) >= c.usageLimit) throw new Error("Your coupon has reached its usage limit.");
+    if (c.perUser) {
+      const myOrdersSnap = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid), where("couponCode", "==", storedCoupon.code)));
+      if (myOrdersSnap.size >= c.perUser) throw new Error("You've already used this coupon the maximum number of times.");
+    }
+    const freshSubtotal = freshItems.reduce((s,i) => s + i.lineTotal, 0);
+    if (freshSubtotal < c.minOrder) throw new Error(`Minimum order of ${data.formatINR(c.minOrder)} required for this coupon.`);
+    verifiedDiscount = c.type === 'Percentage' ? Math.min(Math.round(freshSubtotal * c.value/100), c.maxDiscount || Infinity) : c.value;
+    verifiedCouponCode = storedCoupon.code;
+  }
+
+  const orderRef = doc(collection(db, "orders"));
+
+  await runTransaction(db, async (tx) => {
+    const productRefs = freshItems.map(i => doc(db, "products", i.id));
+    const snaps = await Promise.all(productRefs.map(ref => tx.get(ref)));
+
+    let subtotal = 0;
+    const orderItems = [];
+    for (let idx = 0; idx < freshItems.length; idx++) {
+      const snap = snaps[idx];
+      if (!snap.exists()) throw new Error(`${freshItems[idx].name} is no longer available.`);
+      const product = snap.data();
+      const qty = freshItems[idx].qty;
+      if ((product.stock || 0) < qty) throw new Error(`${product.name} doesn't have enough stock left.`);
+      const lineTotal = product.price * qty;
+      subtotal += lineTotal;
+      orderItems.push({
+        productId: snap.id, name: product.name, sku: product.sku || "",
+        image: (product.images && product.images[0]) || "",
+        price: product.price, qty, lineTotal,
+      });
+    }
+    for (let idx = 0; idx < freshItems.length; idx++) {
+      tx.update(productRefs[idx], { stock: snaps[idx].data().stock - freshItems[idx].qty });
+    }
+
+    const shipping = subtotal >= shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
+    const discount = Math.min(verifiedDiscount, subtotal);
+    const codFee = paymentMethod === 'cod' ? (shippingSettings.codFee || 0) : 0;
+    const total = subtotal - discount + shipping + codFee;
+
+    tx.set(orderRef, {
+      userId: user.uid,
+      items: orderItems,
+      address,
+      paymentMethod,
+      subtotal, shipping, discount, codFee,
+      couponCode: verifiedCouponCode,
+      total,
+      status: "pending",
+      createdAt: serverTimestamp(),
+      ...extraOrderFields,
+    });
+  });
+
+  // Best-effort: bump the coupon's usage counter (allowed by rules — signed-in
+  // users may only increase 'used' by exactly 1, nothing else on the coupon doc)
+  if (verifiedCouponCode) {
+    try {
+      const couponRef = doc(db, "coupons", verifiedCouponCode);
+      const couponSnap = await getDoc(couponRef);
+      if (couponSnap.exists()) {
+        await updateDoc(couponRef, { used: (couponSnap.data().used || 0) + 1 });
+      }
+    } catch (e) { /* non-critical */ }
+  }
+
+  // Best-effort customer stats update (not critical if it fails)
+  try {
+    await updateDoc(doc(db, "customers", user.uid), { orderCount: increment(1) });
+  } catch (e) { /* non-critical */ }
+
+  if (isBuyNow) {
+    sessionStorage.removeItem('sbh_buynow');
+  } else {
+    window.SBHStore.clearCart();
+  }
+  localStorage.removeItem('sbh_coupon');
+  return orderRef.id;
 }
 
 window.placeOrder = async function(e) {
@@ -204,130 +364,96 @@ window.placeOrder = async function(e) {
   const btn = document.getElementById('placeOrderBtn');
   btn.disabled = true; btn.textContent = 'Placing order...';
 
-  const address = {
-    name: document.getElementById('ck_name').value.trim(),
-    phone: document.getElementById('ck_phone').value.trim(),
-    line1: document.getElementById('ck_line1').value.trim(),
-    line2: document.getElementById('ck_line2').value.trim(),
-    landmark: document.getElementById('ck_landmark').value.trim(),
-    city: document.getElementById('ck_city').value.trim(),
-    state: document.getElementById('ck_state').value,
-    pincode: document.getElementById('ck_pincode').value.trim(),
-  };
-
   try {
-    // Re-fetch fresh cart details right before writing, and run as a
-    // transaction so stock is decremented atomically (best effort client-side
-    // protection — not as strong as a server-side Cloud Function, but still
-    // prevents two near-simultaneous checkouts from both silently overselling
-    // within the same browser session's transaction window).
-    const freshItems = await getCheckoutItems();
-    if (!freshItems.length) throw new Error("Your cart is empty.");
-
-    // Re-validate the coupon against the REAL Firestore document right before
-    // writing the order — never trust the cached amount from localStorage,
-    // since that's fully editable by the customer's own browser. Recompute
-    // the discount fresh from real coupon data + real cart subtotal.
-    let verifiedDiscount = 0;
-    let verifiedCouponCode = null;
-    if (storedCoupon) {
-      const couponSnap = await getDoc(doc(db, "coupons", storedCoupon.code));
-      if (!couponSnap.exists() || !couponSnap.data().active) {
-        throw new Error("Your coupon is no longer valid. Please remove it and try again.");
-      }
-      const c = couponSnap.data();
-      const today = new Date().toISOString().slice(0,10);
-      if (c.start && today < c.start) throw new Error("Your coupon isn't active yet.");
-      if (c.end && today > c.end) throw new Error("Your coupon has expired.");
-      if (c.usageLimit && (c.used||0) >= c.usageLimit) throw new Error("Your coupon has reached its usage limit.");
-      if (c.perUser) {
-        const myOrdersSnap = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid), where("couponCode", "==", storedCoupon.code)));
-        if (myOrdersSnap.size >= c.perUser) throw new Error("You've already used this coupon the maximum number of times.");
-      }
-      const freshSubtotal = freshItems.reduce((s,i) => s + i.lineTotal, 0);
-      if (freshSubtotal < c.minOrder) throw new Error(`Minimum order of ${data.formatINR(c.minOrder)} required for this coupon.`);
-      verifiedDiscount = c.type === 'Percentage' ? Math.min(Math.round(freshSubtotal * c.value/100), c.maxDiscount || Infinity) : c.value;
-      verifiedCouponCode = storedCoupon.code;
-    }
-
-    const orderRef = doc(collection(db, "orders"));
-
-    await runTransaction(db, async (tx) => {
-      const productRefs = freshItems.map(i => doc(db, "products", i.id));
-      const snaps = await Promise.all(productRefs.map(ref => tx.get(ref)));
-
-      let subtotal = 0;
-      const orderItems = [];
-      for (let idx = 0; idx < freshItems.length; idx++) {
-        const snap = snaps[idx];
-        if (!snap.exists()) throw new Error(`${freshItems[idx].name} is no longer available.`);
-        const product = snap.data();
-        const qty = freshItems[idx].qty;
-        if ((product.stock || 0) < qty) throw new Error(`${product.name} doesn't have enough stock left.`);
-        const lineTotal = product.price * qty;
-        subtotal += lineTotal;
-        orderItems.push({
-          productId: snap.id, name: product.name, sku: product.sku || "",
-          image: (product.images && product.images[0]) || "",
-          price: product.price, qty, lineTotal,
-        });
-      }
-      for (let idx = 0; idx < freshItems.length; idx++) {
-        tx.update(productRefs[idx], { stock: snaps[idx].data().stock - freshItems[idx].qty });
-      }
-
-      const shipping = subtotal >= shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
-      const discount = Math.min(verifiedDiscount, subtotal);
-      const codFee = shippingSettings.codFee || 0;
-      const total = subtotal - discount + shipping + codFee;
-
-      tx.set(orderRef, {
-        userId: user.uid,
-        items: orderItems,
-        address,
-        paymentMethod: "cod",
-        subtotal, shipping, discount, codFee,
-        couponCode: verifiedCouponCode,
-        total,
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-    });
-
-    // Best-effort: bump the coupon's usage counter (allowed by rules — signed-in
-    // users may only increase 'used' by exactly 1, nothing else on the coupon doc)
-    if (verifiedCouponCode) {
-      try {
-        const couponRef = doc(db, "coupons", verifiedCouponCode);
-        const couponSnap = await getDoc(couponRef);
-        if (couponSnap.exists()) {
-          await updateDoc(couponRef, { used: (couponSnap.data().used || 0) + 1 });
-        }
-      } catch (e) { /* non-critical */ }
-    }
-
-    // Best-effort customer stats update (not critical if it fails)
-    try {
-      const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
-      await updateDoc(doc(db, "customers", user.uid), {
-        orderCount: increment(1),
-      });
-    } catch (e) { /* non-critical */ }
-
-    if (isBuyNow) {
-      sessionStorage.removeItem('sbh_buynow');
-    } else {
-      window.SBHStore.clearCart();
-    }
-    localStorage.removeItem('sbh_coupon');
-    window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderRef.id);
+    const orderId = await finalizeOrder('cod');
+    window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderId);
   } catch (err) {
     showToast(err.message || 'Could not place order. Please try again.', 'error');
     btn.disabled = false; btn.textContent = 'Place Order (COD)';
   }
 };
 
+let razorpayScriptLoaded = false;
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (razorpayScriptLoaded || window.Razorpay) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => { razorpayScriptLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Could not load the payment gateway. Please check your connection and try again.'));
+    document.body.appendChild(script);
+  });
+}
+
+window.payWithRazorpay = async function(e) {
+  e.preventDefault();
+  const form = document.getElementById('checkoutForm');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  if (!paymentSettings.razorpayEnabled || !paymentSettings.razorpayKeyId) {
+    showToast('Online payment is currently unavailable.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('placeOrderBtn');
+  btn.disabled = true; btn.textContent = 'Loading payment gateway...';
+
+  try {
+    await loadRazorpayScript();
+
+    // Compute a fresh display total for what the customer is about to be
+    // charged — the REAL total used for the order record is recomputed
+    // again inside finalizeOrder() right before writing, so this is purely
+    // for what's shown to Razorpay's checkout widget.
+    const freshItems = await getCheckoutItems();
+    if (!freshItems.length) throw new Error("Your cart is empty.");
+    const subtotal = freshItems.reduce((s,i)=>s+i.lineTotal,0);
+    const discount = storedCoupon ? Math.min(storedCoupon.amount, subtotal) : 0;
+    const shipping = subtotal >= shippingSettings.freeThreshold ? 0 : shippingSettings.standardCharge;
+    const displayTotal = subtotal - discount + shipping;
+
+    const address = getCheckoutAddress();
+    btn.textContent = 'Opening payment window...';
+
+    const rzp = new Razorpay({
+      key: paymentSettings.razorpayKeyId,
+      amount: Math.round(displayTotal * 100), // paise
+      currency: 'INR',
+      name: storeDisplayName,
+      description: 'Order payment',
+      prefill: { name: address.name, contact: address.phone, email: user.email || '' },
+      theme: { color: '#16294D' },
+      handler: async function (response) {
+        btn.textContent = 'Confirming order...';
+        try {
+          const orderId = await finalizeOrder('razorpay', {
+            razorpayPaymentId: response.razorpay_payment_id,
+            paymentStatus: 'unverified', // no backend to cryptographically verify the signature — see admin Payments tab
+          });
+          window.location.href = '/order-success.html?orderId=' + encodeURIComponent(orderId);
+        } catch (err) {
+          showToast((err.message || 'Payment succeeded but we could not save your order.') + ' Please contact us with your payment ID: ' + response.razorpay_payment_id, 'error');
+          btn.disabled = false; btn.textContent = 'Pay Now';
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          btn.disabled = false; btn.textContent = 'Pay Now';
+        },
+      },
+    });
+    rzp.on('payment.failed', function (response) {
+      showToast('Payment failed: ' + (response.error?.description || 'Please try again.'), 'error');
+      btn.disabled = false; btn.textContent = 'Pay Now';
+    });
+    rzp.open();
+    btn.disabled = false; btn.textContent = 'Pay Now';
+  } catch (err) {
+    showToast(err.message || 'Could not start payment. Please try again.', 'error');
+    btn.disabled = false; btn.textContent = 'Pay Now';
+  }
+};
+
 } // end else (user signed in)
-</script>
+</script></script>
 </body>
 </html>
