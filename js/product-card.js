@@ -11,7 +11,7 @@
     return `
     <div class="product-card" data-product-id="${p.id}">
       <div class="product-media">
-        <a href="/product.html?slug=${p.slug}" aria-label="${p.name}">
+        <a href="/product.html?slug=${p.slug || p.id}" aria-label="${p.name}">
           <img src="${p.images[0]}" alt="${p.name}" loading="lazy" />
         </a>
         ${discount > 0 ? `<span class="badge badge-accent product-badge">${discount}% OFF</span>` : (p.bestseller ? '<span class="badge badge-accent product-badge">Bestseller</span>' : (p.newArrival ? '<span class="badge badge-accent product-badge">New</span>' : ''))}
@@ -21,7 +21,7 @@
         ${outOfStock ? '<div class="out-of-stock-overlay"><span class="badge badge-danger">Out of Stock</span></div>' : ''}
       </div>
       <div class="product-card-body">
-        <a href="/product.html?slug=${p.slug}">
+        <a href="/product.html?slug=${p.slug || p.id}">
           <div class="brand">${p.category.replace('-', ' ')}</div>
           <div class="name">${p.name}</div>
         </a>
