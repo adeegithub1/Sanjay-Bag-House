@@ -23,12 +23,18 @@
         <button class="settings-tab" data-t="contact">Contact</button>
         <button class="settings-tab" data-t="social">Social Media</button>
         <button class="settings-tab" data-t="business">Business</button>
+        <button class="settings-tab" data-t="payment">Payments</button>
       </div>
 
       <div id="storePanelBranding">
         <div class="form-section">
           <h3>Store Name</h3>
           <div class="form-group"><label class="form-label">Name shown in header, footer &amp; menu</label><input id="bs_storeName" class="form-input" placeholder="e.g. New Sanjay Bag House" /></div>
+        </div>
+        <div class="form-section">
+          <h3>Image Upload</h3>
+          <p class="desc">Powers real photo upload (including taking a photo directly from your phone) everywhere you'd normally paste an image URL — products, logo, favicon, brand logos, profile photo. Get a free key at <a href="https://api.imgbb.com" target="_blank" rel="noopener" style="color:var(--color-accent);font-weight:600;">api.imgbb.com</a> (just needs an email, no card).</p>
+          <div class="form-group"><label class="form-label">ImgBB API Key</label><input id="bs_imgbbKey" class="form-input" placeholder="Paste your free ImgBB API key" /></div>
         </div>
         <div class="form-section">
           <h3>Logo &amp; Favicon</h3>
@@ -40,6 +46,7 @@
                 <div class="logo" style="justify-content:center;display:flex;flex-direction:column;align-items:center;color:var(--color-text);">Sanjay Bag House<small>Carry What Matters</small></div>
               </div>
               <input id="bs_logoUrl" class="form-input" placeholder="https://... (leave blank to use text logo)" />
+              <label class="btn btn-secondary btn-sm" style="margin-top:8px;cursor:pointer;">📷 Upload / Take Photo<input type="file" id="bs_logoFile" accept="image/*" hidden /></label>
             </div>
             <div>
               <label class="form-label">Favicon Image URL</label>
@@ -47,6 +54,7 @@
                 <div style="width:32px;height:32px;background:var(--color-primary);border-radius:6px;margin:0 auto;"></div>
               </div>
               <input id="bs_faviconUrl" class="form-input" placeholder="https://... (small square image, e.g. 64x64)" />
+              <label class="btn btn-secondary btn-sm" style="margin-top:8px;cursor:pointer;">📷 Upload / Take Photo<input type="file" id="bs_faviconFile" accept="image/*" hidden /></label>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" id="saveBrandingBtn" style="margin-top:14px;">Save Branding</button>
@@ -107,6 +115,37 @@
         </div>
         <button class="btn btn-primary" id="bd_saveBtn">Save Changes</button>
       </div>
+
+      <div id="storePanelPayment" class="hidden">
+        <div class="form-section">
+          <h3>Razorpay (Online Payments)</h3>
+          <div style="background:var(--color-warning-bg);border:1px solid #F0D89B;border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+            <p class="body-text" style="font-size:13px;font-weight:700;color:var(--color-warning);margin-bottom:4px;">⚠ Only paste your Key ID here — never your Key Secret</p>
+            <p class="caption-text">Your Key Secret must never appear in this website's code or admin panel — anyone viewing page source could see it. This site only uses the public Key ID, which is safe to expose.</p>
+          </div>
+
+          <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);margin-bottom:16px;">
+            <span class="body-text">Enable Online Payments</span>
+            <label class="toggle"><input id="pay_enabled" type="checkbox" /><span class="toggle-slider"></span></label>
+          </div>
+
+          <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--color-border);margin-bottom:16px;">
+            <span class="body-text">Test Mode <span class="caption-text">(shows a "TEST MODE" badge at checkout, use test cards only)</span></span>
+            <label class="toggle"><input id="pay_testMode" type="checkbox" checked /><span class="toggle-slider"></span></label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Razorpay Key ID</label>
+            <input id="pay_keyId" class="form-input" placeholder="rzp_test_xxxxxxxxxxxx (or rzp_live_xxxxxxxxxxxx)" />
+            <p class="form-hint">Find this in Razorpay Dashboard → Settings → API Keys. Starts with <code>rzp_test_</code> in Test Mode or <code>rzp_live_</code> once you go live.</p>
+          </div>
+
+          <div style="background:var(--color-danger-bg);border-radius:8px;padding:12px 14px;margin-top:6px;">
+            <p class="caption-text" style="color:var(--color-danger);">Since this site has no backend server, successful payments can't be cryptographically re-verified automatically. Orders paid online are marked <strong>"Payment: Unverified"</strong> until you manually confirm the payment ID against your Razorpay Dashboard, from the order's detail page.</p>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="pay_saveBtn">Save Changes</button>
+      </div>
     </div>
   </div>
 </div>
@@ -122,6 +161,11 @@
   const branding = await window.SBHStoreSettings.loadBrandingSettings();
   document.getElementById('bs_storeName').value = branding.storeName;
   document.getElementById('bs_logoUrl').value = branding.logoUrl;
+  const uploadSettings = await window.SBHStoreSettings.loadUploadSettings();
+  document.getElementById('bs_imgbbKey').value = uploadSettings.imgbbApiKey;
+  const { wireImageUploadInput } = await import('/js/image-upload.js');
+  wireImageUploadInput(document.getElementById('bs_logoFile'), document.getElementById('bs_logoUrl'));
+  wireImageUploadInput(document.getElementById('bs_faviconFile'), document.getElementById('bs_faviconUrl'));
   document.getElementById('bs_faviconUrl').value = branding.faviconUrl;
   updateLogoPreview();
   updateFaviconPreview();
@@ -147,6 +191,7 @@
     const btn = document.getElementById('saveBrandingBtn');
     btn.disabled = true; btn.textContent = 'Saving...';
     try {
+      await window.SBHStoreSettings.saveUploadSettings({ imgbbApiKey: document.getElementById('bs_imgbbKey').value.trim() });
       await window.SBHStoreSettings.saveBrandingSettings({
         storeName: document.getElementById('bs_storeName').value.trim(),
         logoUrl: document.getElementById('bs_logoUrl').value.trim(),
@@ -199,6 +244,30 @@
     btn.disabled = false; btn.textContent = 'Save Changes';
   });
 
+  const payment = await window.SBHStoreSettings.loadPaymentSettings();
+  document.getElementById('pay_enabled').checked = payment.razorpayEnabled;
+  document.getElementById('pay_testMode').checked = payment.testMode;
+  document.getElementById('pay_keyId').value = payment.razorpayKeyId;
+  document.getElementById('pay_saveBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('pay_saveBtn');
+    const keyId = document.getElementById('pay_keyId').value.trim();
+    const enabled = document.getElementById('pay_enabled').checked;
+    if (enabled && !keyId) { showToast('Please enter your Razorpay Key ID before enabling online payments.', 'error'); return; }
+    if (keyId && !keyId.startsWith('rzp_')) { showToast('That doesn\'t look like a valid Razorpay Key ID (should start with "rzp_test_" or "rzp_live_").', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await window.SBHStoreSettings.savePaymentSettings({
+        razorpayEnabled: enabled,
+        testMode: document.getElementById('pay_testMode').checked,
+        razorpayKeyId: keyId,
+      });
+      showToast('Payment settings saved successfully', 'success');
+    } catch (err) {
+      showToast('Could not save. Please try again.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  });
+
   const settings = await window.SBHStoreSettings.loadContactSettings();
   document.getElementById('cs_phone').value = settings.phone;
   document.getElementById('cs_whatsapp').value = settings.whatsapp;
@@ -228,7 +297,7 @@
 })();
 </script>
 <script>
-const panels = { branding: 'storePanelBranding', contact: 'storePanelContact', social: 'storePanelSocial', business: 'storePanelBusiness' };
+const panels = { branding: 'storePanelBranding', contact: 'storePanelContact', social: 'storePanelSocial', business: 'storePanelBusiness', payment: 'storePanelPayment' };
 document.querySelectorAll('#storeTabs .settings-tab').forEach(tab => tab.addEventListener('click', function() {
   document.querySelectorAll('#storeTabs .settings-tab').forEach(t=>t.classList.remove('active'));
   this.classList.add('active');
