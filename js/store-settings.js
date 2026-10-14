@@ -106,5 +106,43 @@ async function saveBusinessSettings(data) {
   _businessCache = { ...BUSINESS_DEFAULTS, ...data };
 }
 
-window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings };
-export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings };
+const PAYMENT_DEFAULTS = { razorpayEnabled: false, razorpayKeyId: "", testMode: true };
+let _paymentCache = null;
+
+async function loadPaymentSettings() {
+  if (_paymentCache) return _paymentCache;
+  try {
+    const snap = await getDoc(doc(db, "storeSettings", "payment"));
+    _paymentCache = snap.exists() ? { ...PAYMENT_DEFAULTS, ...snap.data() } : { ...PAYMENT_DEFAULTS };
+  } catch (e) {
+    _paymentCache = { ...PAYMENT_DEFAULTS };
+  }
+  return _paymentCache;
+}
+
+async function savePaymentSettings(data) {
+  await setDoc(doc(db, "storeSettings", "payment"), { ...data, updatedAt: serverTimestamp() });
+  _paymentCache = { ...PAYMENT_DEFAULTS, ...data };
+}
+
+const UPLOAD_DEFAULTS = { imgbbApiKey: "" };
+let _uploadCache = null;
+
+async function loadUploadSettings() {
+  if (_uploadCache) return _uploadCache;
+  try {
+    const snap = await getDoc(doc(db, "storeSettings", "uploads"));
+    _uploadCache = snap.exists() ? { ...UPLOAD_DEFAULTS, ...snap.data() } : { ...UPLOAD_DEFAULTS };
+  } catch (e) {
+    _uploadCache = { ...UPLOAD_DEFAULTS };
+  }
+  return _uploadCache;
+}
+
+async function saveUploadSettings(data) {
+  await setDoc(doc(db, "storeSettings", "uploads"), { ...data, updatedAt: serverTimestamp() });
+  _uploadCache = { ...UPLOAD_DEFAULTS, ...data };
+}
+
+window.SBHStoreSettings = { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings, loadPaymentSettings, savePaymentSettings, loadUploadSettings, saveUploadSettings };
+export { loadContactSettings, saveContactSettings, loadBrandingSettings, saveBrandingSettings, loadSocialSettings, saveSocialSettings, loadShippingSettings, saveShippingSettings, loadBusinessSettings, saveBusinessSettings, loadPaymentSettings, savePaymentSettings, loadUploadSettings, saveUploadSettings };
