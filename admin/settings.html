@@ -31,7 +31,7 @@
           <div class="flex items-center gap-8" style="margin-bottom:20px;">
             <img id="adminAvatarImg" src="" alt="" class="admin-avatar" style="width:64px;height:64px;object-fit:cover;display:none;" />
             <div id="adminAvatarFallback" class="admin-avatar" style="width:64px;height:64px;font-size:22px;background:var(--color-accent);">?</div>
-            <div style="flex:1;"><label class="form-label">Photo URL</label><input id="set_photoUrl" class="form-input" placeholder="https://... (paste an image URL)" /></div>
+            <div style="flex:1;"><label class="form-label">Photo URL</label><input id="set_photoUrl" class="form-input" placeholder="https://... (paste an image URL)" /><label class="btn btn-secondary btn-sm" style="margin-top:8px;cursor:pointer;">📷 Upload / Take Photo<input type="file" id="set_photoFile" accept="image/*" hidden /></label></div>
           </div>
           <div class="form-row form-row-2">
             <div class="form-group"><label class="form-label">Full Name</label><input id="set_name" class="form-input" /></div>
@@ -118,6 +118,8 @@ import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.1/fireb
     else { img.style.display = 'none'; fallback.style.display = 'flex'; }
   }
   document.getElementById('set_photoUrl').addEventListener('input', updateAvatarPreview);
+  const { wireImageUploadInput } = await import('/js/image-upload.js');
+  wireImageUploadInput(document.getElementById('set_photoFile'), document.getElementById('set_photoUrl'));
   document.getElementById('set_name').addEventListener('input', updateAvatarPreview);
 
   document.getElementById('saveProfileBtn').addEventListener('click', async () => {
