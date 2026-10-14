@@ -37,7 +37,7 @@
     <div class="modal-head"><h3 id="brandModalTitle">Add Brand</h3><button class="icon-btn" onclick="closeBrandModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">Brand Name</label><input class="form-input" id="brandNameInput" placeholder="e.g. Wildcraft" /></div>
-      <div class="form-group"><label class="form-label">Logo Image URL</label><input class="form-input" id="brandLogoInput" placeholder="https://..." /></div>
+      <div class="form-group"><label class="form-label">Logo Image URL</label><input class="form-input" id="brandLogoInput" placeholder="https://..." /><label class="btn btn-secondary btn-sm" style="margin-top:8px;cursor:pointer;">📷 Upload / Take Photo<input type="file" id="brandLogoFile" accept="image/*" hidden /></label></div>
       <div id="brandLogoPreview" style="margin-bottom:14px;"></div>
       <div class="flex justify-between items-center"><span class="body-text">Active</span><label class="toggle"><input type="checkbox" id="brandActiveInput" checked/><span class="toggle-slider"></span></label></div>
     </div>
@@ -110,6 +110,8 @@ import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "https://
     document.getElementById('brandLogoPreview').innerHTML = url ? `<img src="${url}" alt="" style="width:60px;height:60px;object-fit:contain;background:#fff;border:1px solid var(--color-border);border-radius:8px;" />` : '';
   }
   document.getElementById('brandLogoInput').addEventListener('input', updateBrandLogoPreview);
+  const { wireImageUploadInput } = await import('/js/image-upload.js');
+  wireImageUploadInput(document.getElementById('brandLogoFile'), document.getElementById('brandLogoInput'));
 
   window.saveBrand = async function() {
     const name = document.getElementById('brandNameInput').value.trim();
